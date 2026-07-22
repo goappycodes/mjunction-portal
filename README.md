@@ -41,7 +41,15 @@ and [`docs/PRD_IVR_Language_Selection_and_Provider_Evaluation.md`](docs/PRD_IVR_
 |------------|---------------------------|--------------|
 | Admin      | `admin@mjunction.test`    | `Admin@12345`|
 | Admin      | `mjunction@appycodes.com` | `Admin@12345`|
+| Admin      | `ops@mjunction.test`      | `Admin@12345`|
 | Telecaller | `agent@mjunction.test`    | `Agent@12345`|
+| Telecaller | `agent2@mjunction.test`   | `Agent@12345`|
+| Telecaller | `agent3@mjunction.test`   | `Agent@12345`|
+
+The seed runs the **full lifecycle for every campaign**, so each campaign's tabs
+(recipients, calls, dispatch, VOC vault, reports) and both queues are populated.
+`npx tsx supabase/seed/finish.ts` is an idempotent top-up that dispatches/delivers
+and runs delivery-confirmation for any campaign missing coverage.
 
 ## Structure
 
