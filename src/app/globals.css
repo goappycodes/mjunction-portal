@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* Internal admin tool — single light theme, neutral slate palette. */
+:root {
+  --background: #f8fafc;      /* slate-50 */
+  --surface: #ffffff;
+  --foreground: #0f172a;      /* slate-900 */
+  --muted: #64748b;           /* slate-500 */
+  --muted-surface: #f1f5f9;   /* slate-100 */
+  --border: #e2e8f0;          /* slate-200 */
+  --ring: #6366f1;            /* indigo-500 */
+  --primary: #4f46e5;         /* indigo-600 */
+  --primary-foreground: #ffffff;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-surface: var(--muted-surface);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
