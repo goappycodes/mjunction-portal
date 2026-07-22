@@ -20,6 +20,7 @@ import {
   recordDeliveryConfirmationCall,
 } from '../../src/lib/domain/call-flow';
 import { transitionStatus, logEvent } from '../../src/lib/domain/audit';
+import { ORDER_CALLABLE } from '../../src/lib/domain/status';
 
 loadEnv({ path: '.env.local' });
 faker.seed(20260722);
@@ -207,21 +208,26 @@ async function refresh(id: string): Promise<Recipient> {
 
 async function runOrderConfirmBatch(campaign: Campaign, recipients: Recipient[], adminId: string) {
   for (const r0 of recipients) {
-    const r = await refresh(r0.id);
-    const result = await provider.placeCall({
-      recipientId: r.id,
-      campaignId: campaign.id,
-      callType: 'order_confirmation',
-      languageConfig: campaign.language_config,
-      defaultLanguage: campaign.default_language,
-      retryLimit: campaign.retry_limit,
-      skipMenuIfKnown: campaign.skip_menu_if_known,
-      knownLanguage: r.preferred_language,
-      productName: r.product_name,
-    });
-    await recordOrderConfirmationCall(db, r, campaign, result, 1, {
-      actorType: 'ivr',
-    });
+    try {
+      const r = await refresh(r0.id);
+      // Only call recipients still in an order-callable state (robust to
+      // concurrent app usage while the seed runs).
+      if (!ORDER_CALLABLE.includes(r.status)) continue;
+      const result = await provider.placeCall({
+        recipientId: r.id,
+        campaignId: campaign.id,
+        callType: 'order_confirmation',
+        languageConfig: campaign.language_config,
+        defaultLanguage: campaign.default_language,
+        retryLimit: campaign.retry_limit,
+        skipMenuIfKnown: campaign.skip_menu_if_known,
+        knownLanguage: r.preferred_language,
+        productName: r.product_name,
+      });
+      await recordOrderConfirmationCall(db, r, campaign, result, 1, { actorType: 'ivr' });
+    } catch (e) {
+      console.warn(`  order-confirm skip ${r0.id}: ${(e as Error).message}`);
+    }
   }
 }
 
@@ -287,26 +293,31 @@ async function dispatchAndDeliver(campaign: Campaign, adminId: string) {
 
   const couriers = ['Delhivery', 'Blue Dart', 'DTDC', 'Ekart', 'XpressBees'];
   for (const r of (confirmed ?? []) as Recipient[]) {
-    const dispatchDate = faker.date.between({ from: '2026-07-08', to: '2026-07-15' });
-    await db.from('dispatches').insert({
-      recipient_id: r.id,
-      courier_name: faker.helpers.arrayElement(couriers),
-      awb_number: faker.string.numeric(12),
-      dispatch_date: dispatchDate.toISOString().slice(0, 10),
-      delivered_date: null,
-      created_by: adminId,
-    });
-    await transitionStatus(db, { recipientId: r.id, from: r.status, to: 'dispatched', actorType: 'admin', actorId: adminId });
-    await logEvent(db, { recipientId: r.id, eventType: 'dispatch', actorType: 'admin', actorId: adminId, payload: { stage: 'dispatched' } });
+    try {
+      if (r.status !== 'address_confirmed' && r.status !== 'address_corrected') continue;
+      const dispatchDate = faker.date.between({ from: '2026-07-08', to: '2026-07-15' });
+      await db.from('dispatches').insert({
+        recipient_id: r.id,
+        courier_name: faker.helpers.arrayElement(couriers),
+        awb_number: faker.string.numeric(12),
+        dispatch_date: dispatchDate.toISOString().slice(0, 10),
+        delivered_date: null,
+        created_by: adminId,
+      });
+      await transitionStatus(db, { recipientId: r.id, from: r.status, to: 'dispatched', actorType: 'admin', actorId: adminId });
+      await logEvent(db, { recipientId: r.id, eventType: 'dispatch', actorType: 'admin', actorId: adminId, payload: { stage: 'dispatched' } });
 
-    // ~88% get delivered, feeding the delivery-confirm queue.
-    if (faker.number.int({ min: 1, max: 100 }) <= 88) {
-      const deliveredDate = faker.date.between({ from: dispatchDate, to: '2026-07-20' });
-      await db.from('dispatches').update({ delivered_date: deliveredDate.toISOString().slice(0, 10) }).eq('recipient_id', r.id);
-      await transitionStatus(db, { recipientId: r.id, from: 'dispatched', to: 'delivered', actorType: 'admin', actorId: adminId });
-      await logEvent(db, { recipientId: r.id, eventType: 'dispatch', actorType: 'admin', actorId: adminId, payload: { stage: 'delivered' } });
-      // Auto-enqueue for delivery confirmation.
-      await transitionStatus(db, { recipientId: r.id, from: 'delivered', to: 'delivery_confirm_pending', actorType: 'system' });
+      // ~88% get delivered, feeding the delivery-confirm queue.
+      if (faker.number.int({ min: 1, max: 100 }) <= 88) {
+        const deliveredDate = faker.date.between({ from: dispatchDate, to: '2026-07-20' });
+        await db.from('dispatches').update({ delivered_date: deliveredDate.toISOString().slice(0, 10) }).eq('recipient_id', r.id);
+        await transitionStatus(db, { recipientId: r.id, from: 'dispatched', to: 'delivered', actorType: 'admin', actorId: adminId });
+        await logEvent(db, { recipientId: r.id, eventType: 'dispatch', actorType: 'admin', actorId: adminId, payload: { stage: 'delivered' } });
+        // Auto-enqueue for delivery confirmation.
+        await transitionStatus(db, { recipientId: r.id, from: 'delivered', to: 'delivery_confirm_pending', actorType: 'system' });
+      }
+    } catch (e) {
+      console.warn(`  dispatch skip ${r.id}: ${(e as Error).message}`);
     }
   }
 }
@@ -321,19 +332,24 @@ async function runDeliveryConfirmBatch(campaign: Campaign, skipPct = 15) {
   for (const r0 of (pend ?? []) as Recipient[]) {
     // Leave a slice un-called so the delivery-confirm queue is never empty.
     if (faker.number.int({ min: 1, max: 100 }) <= skipPct) continue;
-    const r = await refresh(r0.id);
-    const result = await provider.placeCall({
-      recipientId: r.id,
-      campaignId: campaign.id,
-      callType: 'delivery_confirmation',
-      languageConfig: campaign.language_config,
-      defaultLanguage: campaign.default_language,
-      retryLimit: campaign.retry_limit,
-      skipMenuIfKnown: campaign.skip_menu_if_known,
-      knownLanguage: r.preferred_language,
-      productName: r.product_name,
-    });
-    await recordDeliveryConfirmationCall(db, r, campaign, result, 1, { actorType: 'ivr' });
+    try {
+      const r = await refresh(r0.id);
+      if (r.status !== 'delivery_confirm_pending') continue;
+      const result = await provider.placeCall({
+        recipientId: r.id,
+        campaignId: campaign.id,
+        callType: 'delivery_confirmation',
+        languageConfig: campaign.language_config,
+        defaultLanguage: campaign.default_language,
+        retryLimit: campaign.retry_limit,
+        skipMenuIfKnown: campaign.skip_menu_if_known,
+        knownLanguage: r.preferred_language,
+        productName: r.product_name,
+      });
+      await recordDeliveryConfirmationCall(db, r, campaign, result, 1, { actorType: 'ivr' });
+    } catch (e) {
+      console.warn(`  delivery-confirm skip ${r0.id}: ${(e as Error).message}`);
+    }
   }
 }
 

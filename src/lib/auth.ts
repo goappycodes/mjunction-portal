@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Profile, UserRole } from '@/lib/database.types';
@@ -12,8 +13,12 @@ export interface SessionUser {
 /**
  * Verified session user. Uses getUser() (revalidates with the auth server) —
  * never getSession(). Returns null when unauthenticated.
+ *
+ * Wrapped in React cache() so the layout and the page in a single request
+ * share ONE getUser() + profile lookup instead of repeating them (this removes
+ * 2+ redundant Supabase round-trips per navigation).
  */
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,7 +39,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     profile,
     role: profile.role,
   };
-}
+});
 
 /** Require any authenticated user; redirect to /login otherwise. */
 export async function requireUser(): Promise<SessionUser> {

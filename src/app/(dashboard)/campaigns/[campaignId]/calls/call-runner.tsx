@@ -48,6 +48,7 @@ export function CallRunner({
           </p>
           <Button
             onClick={() => run('order_confirmation')}
+            loading={running === 'order_confirmation'}
             disabled={pending || orderEligible === 0}
           >
             {running === 'order_confirmation' ? 'Running…' : 'Run order-confirm batch'}
@@ -69,6 +70,7 @@ export function CallRunner({
           </p>
           <Button
             onClick={() => run('delivery_confirmation')}
+            loading={running === 'delivery_confirmation'}
             disabled={pending || deliveryEligible === 0}
           >
             {running === 'delivery_confirmation' ? 'Running…' : 'Run delivery-confirm batch'}

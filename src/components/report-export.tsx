@@ -58,10 +58,20 @@ export function ReportExport({ report }: { report: CampaignReport }) {
 
   return (
     <div className="flex gap-2">
-      <Button variant="secondary" onClick={exportExcel} disabled={busy !== null}>
+      <Button
+        variant="secondary"
+        onClick={exportExcel}
+        loading={busy === 'xlsx'}
+        disabled={busy !== null}
+      >
         {busy === 'xlsx' ? 'Building…' : 'Export Excel'}
       </Button>
-      <Button variant="secondary" onClick={exportPdf} disabled={busy !== null}>
+      <Button
+        variant="secondary"
+        onClick={exportPdf}
+        loading={busy === 'pdf'}
+        disabled={busy !== null}
+      >
         {busy === 'pdf' ? 'Building…' : 'Export PDF'}
       </Button>
     </div>

@@ -148,7 +148,7 @@ export function LanguageConfigForm({
         {msg?.ok && <p className="text-sm text-[var(--success)]">Saved.</p>}
 
         <div className="flex justify-end">
-          <Button onClick={save} disabled={pending}>
+          <Button onClick={save} loading={pending}>
             {pending ? 'Saving…' : 'Save configuration'}
           </Button>
         </div>

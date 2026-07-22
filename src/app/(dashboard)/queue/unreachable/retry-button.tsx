@@ -21,7 +21,7 @@ export function RetryButton({ recipientId }: { recipientId: string }) {
             else router.refresh();
           })
         }
-        disabled={pending}
+        loading={pending}
       >
         {pending ? 'Retrying…' : 'Retry call'}
       </Button>

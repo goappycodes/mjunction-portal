@@ -199,7 +199,11 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
               <Button variant="secondary" onClick={reset} disabled={pending}>
                 Cancel
               </Button>
-              <Button onClick={commit} disabled={pending || preview.validCount === 0}>
+              <Button
+                onClick={commit}
+                loading={pending}
+                disabled={preview.validCount === 0}
+              >
                 {pending ? 'Importing…' : `Commit ${preview.validCount} valid row(s)`}
               </Button>
             </div>

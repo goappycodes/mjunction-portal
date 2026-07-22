@@ -32,7 +32,7 @@ export function VocPlayer({ vocId }: { vocId: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Button size="sm" variant="secondary" onClick={load} disabled={pending}>
+      <Button size="sm" variant="secondary" onClick={load} loading={pending}>
         {pending ? 'Signing…' : 'Play'}
       </Button>
       {error && <span className="text-xs text-[var(--danger)]">{error}</span>}
