@@ -39,7 +39,10 @@ const provider = new MockTelephonyProvider(db);
 const USERS = [
   { email: 'admin@mjunction.test', password: 'Admin@12345', full_name: 'Priya Admin', role: 'admin' as const },
   { email: 'mjunction@appycodes.com', password: 'Admin@12345', full_name: 'mjunction Admin', role: 'admin' as const },
+  { email: 'ops@mjunction.test', password: 'Admin@12345', full_name: 'Sneha Operations', role: 'admin' as const },
   { email: 'agent@mjunction.test', password: 'Agent@12345', full_name: 'Ravi Telecaller', role: 'telecaller' as const },
+  { email: 'agent2@mjunction.test', password: 'Agent@12345', full_name: 'Meera Kulkarni', role: 'telecaller' as const },
+  { email: 'agent3@mjunction.test', password: 'Agent@12345', full_name: 'Arjun Reddy', role: 'telecaller' as const },
 ];
 
 const PRODUCTS = [
@@ -99,10 +102,13 @@ async function emptyVocBucket() {
 async function wipeDemo() {
   console.log('Wiping prior demo data…');
   await emptyVocBucket();
-  // Delete all campaigns — cascades to recipients, calls, dispatches, VOC, events.
   const { data: campaigns } = await db.from('campaigns').select('id');
   for (const c of campaigns ?? []) {
-    await db.from('campaigns').delete().eq('id', c.id);
+    // voc_recordings FKs are intentionally non-cascading ("retained
+    // indefinitely"), so clear them first or the campaign delete is blocked.
+    await db.from('voc_recordings').delete().eq('campaign_id', c.id);
+    const { error } = await db.from('campaigns').delete().eq('id', c.id);
+    if (error) console.warn(`  wipe: could not delete campaign ${c.id}: ${error.message}`);
   }
 }
 
@@ -305,7 +311,7 @@ async function dispatchAndDeliver(campaign: Campaign, adminId: string) {
   }
 }
 
-async function runDeliveryConfirmBatch(campaign: Campaign) {
+async function runDeliveryConfirmBatch(campaign: Campaign, skipPct = 15) {
   const { data: pend } = await db
     .from('recipients')
     .select('*')
@@ -313,6 +319,8 @@ async function runDeliveryConfirmBatch(campaign: Campaign) {
     .eq('status', 'delivery_confirm_pending');
 
   for (const r0 of (pend ?? []) as Recipient[]) {
+    // Leave a slice un-called so the delivery-confirm queue is never empty.
+    if (faker.number.int({ min: 1, max: 100 }) <= skipPct) continue;
     const r = await refresh(r0.id);
     const result = await provider.placeCall({
       recipientId: r.id,
@@ -370,18 +378,22 @@ async function main() {
 
   console.log('Creating recipients…');
   const r1 = await createRecipients(c1, adminId, 120, true);
-  const r2 = await createRecipients(c2, adminId, 80, false);
-  await createRecipients(c3, adminId, 60, false);
+  const r2 = await createRecipients(c2, adminId, 80, true);
+  const r3 = await createRecipients(c3, adminId, 60, true);
 
-  console.log('Campaign 1: full lifecycle…');
-  await runOrderConfirmBatch(c1, r1, adminId);
-  await resolveSomeEscalations(c1, adminId, agentId);
-  await dispatchAndDeliver(c1, adminId);
-  await runDeliveryConfirmBatch(c1);
+  // Run the FULL lifecycle for every campaign so each tab (recipients, calls,
+  // dispatch, VOC vault, reports) and every queue is populated everywhere.
+  async function fullLifecycle(c: Campaign, recips: Recipient[], label: string) {
+    console.log(`${label}: full lifecycle…`);
+    await runOrderConfirmBatch(c, recips, adminId);
+    await resolveSomeEscalations(c, adminId, agentId);
+    await dispatchAndDeliver(c, adminId);
+    await runDeliveryConfirmBatch(c);
+  }
 
-  console.log('Campaign 2: order-confirm only…');
-  await runOrderConfirmBatch(c2, r2, adminId);
-  await resolveSomeEscalations(c2, adminId, agentId);
+  await fullLifecycle(c1, r1, 'Campaign 1 (Tata Steel)');
+  await fullLifecycle(c2, r2, 'Campaign 2 (JSW)');
+  await fullLifecycle(c3, r3, 'Campaign 3 (mjunction)');
 
   // Summary
   const { data: statusRows } = await db.from('recipients').select('status');
@@ -395,7 +407,10 @@ async function main() {
   console.log('\nLogin credentials:');
   console.log('  ADMIN      admin@mjunction.test / Admin@12345');
   console.log('  ADMIN      mjunction@appycodes.com / Admin@12345');
+  console.log('  ADMIN      ops@mjunction.test / Admin@12345');
   console.log('  TELECALLER agent@mjunction.test / Agent@12345');
+  console.log('  TELECALLER agent2@mjunction.test / Agent@12345');
+  console.log('  TELECALLER agent3@mjunction.test / Agent@12345');
 }
 
 main()
