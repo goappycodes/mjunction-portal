@@ -1,22 +1,40 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { Card, Badge } from '@/components/ui/primitives';
+import { Card, Input, Select } from '@/components/ui/primitives';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { RetryButton } from './retry-button';
 import { formatDateTime } from '@/lib/utils';
+import type { RecipientStatus } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
-export default async function UnreachablePage() {
+export default async function UnreachablePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stage?: string; q?: string }>;
+}) {
+  const sp = await searchParams;
   await requireUser();
   const supabase = await createClient();
 
-  const { data: rows } = await supabase
+  const stageStatuses: RecipientStatus[] =
+    sp.stage === 'order'
+      ? ['order_unreachable']
+      : sp.stage === 'delivery'
+        ? ['delivery_unreachable']
+        : ['order_unreachable', 'delivery_unreachable'];
+
+  let query = supabase
     .from('recipients')
     .select('id, customer_name, contact_no_e164, status, updated_at, campaigns(calling_from)')
-    .in('status', ['order_unreachable', 'delivery_unreachable'])
-    .order('updated_at', { ascending: true });
+    .in('status', stageStatuses);
+  if (sp.q) {
+    query = query.or(`customer_name.ilike.%${sp.q}%,contact_no_e164.ilike.%${sp.q}%`);
+  }
+  const { data: rows } = await query.order('updated_at', { ascending: true });
 
   const cname = (c: unknown) => {
     const cc = Array.isArray(c) ? c[0] : c;
@@ -25,12 +43,24 @@ export default async function UnreachablePage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Unreachable</h1>
-        <p className="text-sm text-[var(--muted)]">
-          No-answer / not-reachable recipients awaiting a retry.
-        </p>
-      </div>
+      <PageHeader
+        title="Unreachable"
+        description="No-answer / not-reachable recipients awaiting a retry."
+      />
+
+      <FilterBar action="/queue/unreachable" resetHref="/queue/unreachable">
+        <FilterField label="Search">
+          <Input name="q" defaultValue={sp.q ?? ''} placeholder="Name or phone" className="w-56" />
+        </FilterField>
+        <FilterField label="Stage">
+          <Select name="stage" defaultValue={sp.stage ?? ''} className="w-48">
+            <option value="">Order &amp; delivery</option>
+            <option value="order">Order unreachable</option>
+            <option value="delivery">Delivery unreachable</option>
+          </Select>
+        </FilterField>
+        <span className="self-center text-sm text-[var(--muted)]">{rows?.length ?? 0} pending</span>
+      </FilterBar>
 
       {rows && rows.length ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">

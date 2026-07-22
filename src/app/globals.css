@@ -1,25 +1,49 @@
 @import "tailwindcss";
 
-/* Internal admin tool — single light theme, neutral slate palette. */
+/* ===================================================================
+   Design tokens — modern light content area + dark slate sidebar.
+   =================================================================== */
 :root {
-  --background: #f8fafc;      /* slate-50 */
-  --surface: #ffffff;
-  --foreground: #0f172a;      /* slate-900 */
-  --muted: #64748b;           /* slate-500 */
-  --muted-surface: #f1f5f9;   /* slate-100 */
-  --border: #e2e8f0;          /* slate-200 */
-  --ring: #6366f1;            /* indigo-500 */
-  --primary: #4f46e5;         /* indigo-600 */
+  /* Content surfaces */
+  --background: #f5f6f8;        /* app canvas */
+  --surface: #ffffff;          /* cards */
+  --surface-2: #f8fafc;        /* subtle raised / table head */
+  --foreground: #0f172a;       /* slate-900 */
+  --muted: #64748b;            /* slate-500 */
+  --muted-surface: #f1f5f9;    /* slate-100 */
+  --border: #e6e9ee;
+  --border-strong: #d5dae2;
+  --ring: #818cf8;             /* indigo-400 */
+
+  /* Brand */
+  --primary: #4f46e5;          /* indigo-600 */
+  --primary-hover: #4338ca;    /* indigo-700 */
   --primary-foreground: #ffffff;
+  --primary-soft: #eef2ff;     /* indigo-50 */
+
+  /* Semantic */
   --danger: #dc2626;
   --success: #16a34a;
   --warning: #d97706;
-  --radius: 0.5rem;
+
+  --radius: 0.7rem;
+
+  /* Sidebar (dark) */
+  --sidebar-bg: #0f172a;        /* slate-900 */
+  --sidebar-bg-2: #0b1120;      /* footer/darker */
+  --sidebar-fg: #cbd5e1;        /* slate-300 */
+  --sidebar-fg-strong: #f8fafc; /* near-white */
+  --sidebar-muted: #64748b;     /* slate-500 */
+  --sidebar-hover: #1e293b;     /* slate-800 */
+  --sidebar-active: #4f46e5;    /* indigo-600 */
+  --sidebar-active-soft: rgba(79, 70, 229, 0.16);
+  --sidebar-border: #1e293b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-surface: var(--muted-surface);
@@ -27,9 +51,11 @@
   --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --radius-app: var(--radius);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -38,8 +64,42 @@
   border-color: var(--border);
 }
 
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Slim, modern scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+  background-clip: content-box;
+}
+
+/* Dark scrollbar inside the sidebar */
+.sidebar-scroll {
+  scrollbar-color: #334155 transparent;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #334155;
+  background-clip: content-box;
 }

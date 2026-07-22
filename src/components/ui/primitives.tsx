@@ -6,7 +6,7 @@ export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return (
     <div
       className={cn(
-        'rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-sm',
+        'rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_1px_3px_rgba(15,23,42,0.06)]',
         className,
       )}
       {...props}
@@ -34,7 +34,7 @@ export const Input = React.forwardRef<
   <input
     ref={ref}
     className={cn(
-      'h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm placeholder:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] disabled:opacity-50',
+      'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm shadow-sm transition-colors placeholder:text-[var(--muted)] focus-visible:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40 disabled:opacity-50',
       className,
     )}
     {...props}
@@ -64,7 +64,7 @@ export const Select = React.forwardRef<
   <select
     ref={ref}
     className={cn(
-      'h-9 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]',
+      'h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2.5 text-sm shadow-sm transition-colors focus-visible:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40',
       className,
     )}
     {...props}

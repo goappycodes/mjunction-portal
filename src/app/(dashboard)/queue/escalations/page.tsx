@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { Card, Badge } from '@/components/ui/primitives';
+import { Card, Badge, Select } from '@/components/ui/primitives';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { PageHeader } from '@/components/page-header';
 import { formatDateTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +17,13 @@ interface QueueItem {
   updated_at: string;
 }
 
-export default async function EscalationsPage() {
+export default async function EscalationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  const sp = await searchParams;
+  const typeFilter = sp.type ?? '';
   await requireUser();
   const supabase = await createClient();
 
@@ -50,7 +58,7 @@ export default async function EscalationsPage() {
     return (cc as { calling_from?: string } | null)?.calling_from ?? null;
   };
 
-  const items: QueueItem[] = [
+  let items: QueueItem[] = [
     ...(orderEscalations ?? []).map((r) => ({
       id: r.id,
       customer_name: r.customer_name,
@@ -69,15 +77,27 @@ export default async function EscalationsPage() {
     })),
   ];
 
+  if (typeFilter === 'order') items = items.filter((i) => i.type.startsWith('Order'));
+  else if (typeFilter === 'delivery') items = items.filter((i) => i.type.startsWith('Delivery'));
+  items.sort((a, b) => a.updated_at.localeCompare(b.updated_at));
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Escalations</h1>
-        <p className="text-sm text-[var(--muted)]">
-          Press-2 transfers awaiting an agent: order address changes (captured manually) and
-          delivery issues.
-        </p>
-      </div>
+      <PageHeader
+        title="Escalations"
+        description="Press-2 transfers awaiting an agent: order address changes (captured manually) and delivery issues."
+      />
+
+      <FilterBar action="/queue/escalations" resetHref="/queue/escalations">
+        <FilterField label="Type">
+          <Select name="type" defaultValue={typeFilter} className="w-56">
+            <option value="">All escalations</option>
+            <option value="order">Order — address change</option>
+            <option value="delivery">Delivery — issue raised</option>
+          </Select>
+        </FilterField>
+        <span className="self-center text-sm text-[var(--muted)]">{items.length} open</span>
+      </FilterBar>
 
       {items.length ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">

@@ -2,21 +2,34 @@ import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getLanguageMap, langName } from '@/lib/domain/languages';
 import { CallRunner } from './call-runner';
-import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui/primitives';
+import { Card, CardHeader, CardTitle, CardContent, Badge, Select } from '@/components/ui/primitives';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { ORDER_CALLABLE, DELIVERY_CALLABLE } from '@/lib/domain/status';
 import { CALL_TYPE_LABELS, OUTCOME_LABELS } from '@/lib/domain/labels';
 import { formatDateTime } from '@/lib/utils';
+import type { CallOutcome, CallType, CallerType } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CallsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ campaignId: string }>;
+  searchParams: Promise<{ type?: string; outcome?: string; caller?: string }>;
 }) {
   const { campaignId } = await params;
+  const sp = await searchParams;
   const user = await requireUser();
   const supabase = await createClient();
+
+  let recentQuery = supabase
+    .from('call_attempts')
+    .select('*')
+    .eq('campaign_id', campaignId);
+  if (sp.type) recentQuery = recentQuery.eq('call_type', sp.type as CallType);
+  if (sp.outcome) recentQuery = recentQuery.eq('outcome', sp.outcome as CallOutcome);
+  if (sp.caller) recentQuery = recentQuery.eq('caller_type', sp.caller as CallerType);
 
   const [orderCount, deliveryCount, recentRes, langMap] = await Promise.all([
     supabase
@@ -29,14 +42,11 @@ export default async function CallsPage({
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId)
       .in('status', DELIVERY_CALLABLE),
-    supabase
-      .from('call_attempts')
-      .select('*')
-      .eq('campaign_id', campaignId)
-      .order('created_at', { ascending: false })
-      .limit(20),
+    recentQuery.order('created_at', { ascending: false }).limit(30),
     getLanguageMap(supabase),
   ]);
+
+  const callsBase = `/campaigns/${campaignId}/calls`;
 
   return (
     <div className="space-y-6">
@@ -54,6 +64,36 @@ export default async function CallsPage({
           </p>
         </Card>
       )}
+
+      <FilterBar action={callsBase} resetHref={callsBase}>
+        <FilterField label="Call type">
+          <Select name="type" defaultValue={sp.type ?? ''} className="w-52">
+            <option value="">All types</option>
+            {Object.entries(CALL_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Outcome">
+          <Select name="outcome" defaultValue={sp.outcome ?? ''} className="w-56">
+            <option value="">All outcomes</option>
+            {Object.entries(OUTCOME_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <FilterField label="Caller">
+          <Select name="caller" defaultValue={sp.caller ?? ''} className="w-36">
+            <option value="">All callers</option>
+            <option value="ivr">IVR</option>
+            <option value="agent">Agent</option>
+          </Select>
+        </FilterField>
+      </FilterBar>
 
       <Card>
         <CardHeader>

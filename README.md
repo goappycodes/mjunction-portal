@@ -8,6 +8,8 @@ Ozonetel drop in later with **no UI, schema, RLS or reporting changes**.
 Built per [`docs/TECH_SPEC_Admin_Panel_NextJS_Supabase.md`](docs/TECH_SPEC_Admin_Panel_NextJS_Supabase.md)
 and [`docs/PRD_IVR_Language_Selection_and_Provider_Evaluation.md`](docs/PRD_IVR_Language_Selection_and_Provider_Evaluation.md).
 
+**→ Full page-by-page feature guide: [`docs/APP_DOCUMENTATION.md`](docs/APP_DOCUMENTATION.md)**
+
 ## Stack
 
 - **Next.js 16** (App Router, Server Components + Server Actions, Turbopack; `middleware.ts` → `proxy.ts`)

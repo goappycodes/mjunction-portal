@@ -1,7 +1,8 @@
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { getLanguageMap, langName } from '@/lib/domain/languages';
-import { Card, CardContent, Badge } from '@/components/ui/primitives';
+import { getLanguageMap, getLanguages, langName } from '@/lib/domain/languages';
+import { Card, CardContent, Badge, Input, Select } from '@/components/ui/primitives';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { VocPlayer } from '@/components/voc-player';
 import { formatDateTime } from '@/lib/utils';
 
@@ -9,21 +10,30 @@ export const dynamic = 'force-dynamic';
 
 export default async function VocPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ campaignId: string }>;
+  searchParams: Promise<{ q?: string; lang?: string }>;
 }) {
   const { campaignId } = await params;
+  const sp = await searchParams;
   await requireUser();
   const supabase = await createClient();
 
-  const [{ data: vocs }, langMap] = await Promise.all([
-    supabase
-      .from('voc_recordings')
-      .select('*, recipients(customer_name, contact_no_e164)')
-      .eq('campaign_id', campaignId)
-      .order('created_at', { ascending: false }),
+  let vocQuery = supabase
+    .from('voc_recordings')
+    .select('*, recipients(customer_name, contact_no_e164)')
+    .eq('campaign_id', campaignId);
+  if (sp.lang) vocQuery = vocQuery.eq('language', sp.lang);
+  if (sp.q) vocQuery = vocQuery.or(`sealed_voc_id.ilike.%${sp.q}%,product_name.ilike.%${sp.q}%`);
+
+  const [{ data: vocs }, langMap, languages] = await Promise.all([
+    vocQuery.order('created_at', { ascending: false }),
     getLanguageMap(supabase),
+    getLanguages(supabase, true),
   ]);
+
+  const vocBase = `/campaigns/${campaignId}/voc`;
 
   return (
     <div className="space-y-4">
@@ -31,6 +41,22 @@ export default async function VocPage({
         Sealed VOC recordings in the private vault — retained indefinitely, played via
         short-lived signed URLs. {vocs?.length ?? 0} recording(s).
       </p>
+
+      <FilterBar action={vocBase} resetHref={vocBase}>
+        <FilterField label="Search">
+          <Input name="q" defaultValue={sp.q ?? ''} placeholder="Sealed VOC id or product" className="w-64" />
+        </FilterField>
+        <FilterField label="Language">
+          <Select name="lang" defaultValue={sp.lang ?? ''} className="w-40">
+            <option value="">All languages</option>
+            {languages.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.display_name}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+      </FilterBar>
 
       {vocs && vocs.length ? (
         <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">

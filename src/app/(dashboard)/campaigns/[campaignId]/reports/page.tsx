@@ -5,17 +5,23 @@ import { getLanguageMap, langName } from '@/lib/domain/languages';
 import { statusLabel } from '@/lib/domain/labels';
 import { formatDate } from '@/lib/utils';
 import { ReportExport } from '@/components/report-export';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/primitives';
+import { Card, CardContent, CardHeader, CardTitle, Select } from '@/components/ui/primitives';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { STATUS_LABELS } from '@/lib/domain/labels';
 import type { CampaignReport, ReportRow } from '@/lib/exports/types';
+import type { RecipientStatus } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReportsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ campaignId: string }>;
+  searchParams: Promise<{ status?: string }>;
 }) {
   const { campaignId } = await params;
+  const sp = await searchParams;
   await requireUser();
   const supabase = await createClient();
 
@@ -26,11 +32,14 @@ export default async function ReportsPage({
     .single();
   if (!campaign) notFound();
 
-  const { data: recipients } = await supabase
+  let recipientsQuery = supabase
     .from('recipients')
     .select('id, customer_name, contact_no_e164, product_name, status, preferred_language')
-    .eq('campaign_id', campaignId)
-    .order('customer_name');
+    .eq('campaign_id', campaignId);
+  if (sp.status && sp.status in STATUS_LABELS) {
+    recipientsQuery = recipientsQuery.eq('status', sp.status as RecipientStatus);
+  }
+  const { data: recipients } = await recipientsQuery.order('customer_name');
 
   const recipientIds = (recipients ?? []).map((r) => r.id);
 
@@ -93,8 +102,25 @@ export default async function ReportsPage({
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
             Recipient-wise status, confirmation dates, language and the sealed VOC id — the
-            artefact sent to mjunction. {rows.length} recipient(s).
+            artefact sent to mjunction. {rows.length} recipient(s)
+            {sp.status ? ' (filtered)' : ''}.
           </p>
+          <FilterBar
+            action={`/campaigns/${campaignId}/reports`}
+            resetHref={`/campaigns/${campaignId}/reports`}
+            className="!p-0 !border-0 !bg-transparent !shadow-none"
+          >
+            <FilterField label="Status filter">
+              <Select name="status" defaultValue={sp.status ?? ''} className="w-56">
+                <option value="">All statuses</option>
+                {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
+          </FilterBar>
           <ReportExport report={report} />
         </CardContent>
       </Card>

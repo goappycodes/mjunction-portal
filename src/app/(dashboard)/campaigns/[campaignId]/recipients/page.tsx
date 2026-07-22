@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { getLanguageMap, langName } from '@/lib/domain/languages';
+import { getLanguageMap, getLanguages, langName } from '@/lib/domain/languages';
 import { RecipientsTable, type RecipientRow } from './recipients-table';
 import { Input, Select } from '@/components/ui/primitives';
-import { Button } from '@/components/ui/button';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { STATUS_LABELS } from '@/lib/domain/labels';
 import type { RecipientStatus } from '@/lib/database.types';
 
@@ -17,7 +17,7 @@ export default async function RecipientsPage({
   searchParams,
 }: {
   params: Promise<{ campaignId: string }>;
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; lang?: string; page?: string }>;
 }) {
   const { campaignId } = await params;
   const sp = await searchParams;
@@ -36,15 +36,19 @@ export default async function RecipientsPage({
   if (sp.status && sp.status in STATUS_LABELS) {
     query = query.eq('status', sp.status as RecipientStatus);
   }
+  if (sp.lang) {
+    query = sp.lang === 'unset' ? query.is('preferred_language', null) : query.eq('preferred_language', sp.lang);
+  }
   if (sp.q) {
     query = query.or(
-      `customer_name.ilike.%${sp.q}%,contact_no.ilike.%${sp.q}%,contact_no_e164.ilike.%${sp.q}%`,
+      `customer_name.ilike.%${sp.q}%,contact_no.ilike.%${sp.q}%,contact_no_e164.ilike.%${sp.q}%,product_name.ilike.%${sp.q}%`,
     );
   }
 
-  const [{ data, count }, langMap] = await Promise.all([
+  const [{ data, count }, langMap, languages] = await Promise.all([
     query.order('updated_at', { ascending: false }).range(from, to),
     getLanguageMap(supabase),
+    getLanguages(supabase, true),
   ]);
 
   const rows: RecipientRow[] = (data ?? []).map((r) => ({
@@ -59,20 +63,19 @@ export default async function RecipientsPage({
     const u = new URLSearchParams();
     if (sp.status) u.set('status', sp.status);
     if (sp.q) u.set('q', sp.q);
+    if (sp.lang) u.set('lang', sp.lang);
     u.set('page', String(p));
     return `${base}?${u.toString()}`;
   };
 
   return (
     <div className="space-y-4">
-      <form className="flex flex-wrap items-end gap-3" action={base}>
-        <div className="space-y-1">
-          <label className="text-xs text-[var(--muted)]">Search</label>
-          <Input name="q" defaultValue={sp.q ?? ''} placeholder="Name or phone" className="w-56" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs text-[var(--muted)]">Status</label>
-          <Select name="status" defaultValue={sp.status ?? ''} className="w-52">
+      <FilterBar action={base} resetHref={base}>
+        <FilterField label="Search">
+          <Input name="q" defaultValue={sp.q ?? ''} placeholder="Name, phone or product" className="w-56" />
+        </FilterField>
+        <FilterField label="Status">
+          <Select name="status" defaultValue={sp.status ?? ''} className="w-48">
             <option value="">All statuses</option>
             {Object.entries(STATUS_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -80,14 +83,22 @@ export default async function RecipientsPage({
               </option>
             ))}
           </Select>
-        </div>
-        <Button type="submit" variant="secondary">
-          Filter
-        </Button>
-        <span className="ml-auto self-center text-sm text-[var(--muted)]">
+        </FilterField>
+        <FilterField label="Language">
+          <Select name="lang" defaultValue={sp.lang ?? ''} className="w-40">
+            <option value="">All languages</option>
+            <option value="unset">Not captured</option>
+            {languages.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.display_name}
+              </option>
+            ))}
+          </Select>
+        </FilterField>
+        <span className="self-center text-sm text-[var(--muted)]">
           {total} recipient{total === 1 ? '' : 's'}
         </span>
-      </form>
+      </FilterBar>
 
       <RecipientsTable rows={rows} />
 
@@ -98,12 +109,12 @@ export default async function RecipientsPage({
           </span>
           <div className="flex gap-2">
             {page > 1 && (
-              <Link href={qsFor(page - 1)} className="rounded-md border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
+              <Link href={qsFor(page - 1)} className="rounded-lg border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
                 Previous
               </Link>
             )}
             {page < totalPages && (
-              <Link href={qsFor(page + 1)} className="rounded-md border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
+              <Link href={qsFor(page + 1)} className="rounded-lg border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
                 Next
               </Link>
             )}
