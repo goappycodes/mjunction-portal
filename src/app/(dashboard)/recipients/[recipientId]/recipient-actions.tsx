@@ -69,7 +69,7 @@ export function RecipientActions({
                     ),
                   )
                 }
-                disabled={pending}
+                loading={pending}
               >
                 Save corrected address
               </Button>
@@ -109,7 +109,7 @@ export function RecipientActions({
               onClick={() =>
                 start(async () => done(await resolveDeliveryIssue({ recipientId, note })))
               }
-              disabled={pending}
+              loading={pending}
             >
               Resolve &amp; close
             </Button>
@@ -123,7 +123,7 @@ export function RecipientActions({
             </p>
             <Button
               onClick={() => start(async () => done(await retryCall(recipientId)))}
-              disabled={pending}
+              loading={pending}
             >
               {pending ? 'Retrying…' : 'Retry call'}
             </Button>

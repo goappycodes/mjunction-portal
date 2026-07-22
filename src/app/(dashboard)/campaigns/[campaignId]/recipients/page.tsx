@@ -10,7 +10,7 @@ import type { RecipientStatus } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 15;
 
 export default async function RecipientsPage({
   params,

@@ -47,7 +47,7 @@ export function NewUserForm() {
           <div className="sm:col-span-2">
             {state.error && <p className="mb-2 text-sm text-[var(--danger)]">{state.error}</p>}
             {state.ok && <p className="mb-2 text-sm text-[var(--success)]">User created.</p>}
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" loading={pending}>
               {pending ? 'Creating…' : 'Create user'}
             </Button>
           </div>

@@ -53,7 +53,7 @@ export function NewCampaignForm({ languages }: { languages: Language[] }) {
             </p>
           )}
           <div className="flex justify-end gap-2">
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" loading={pending}>
               {pending ? 'Creating…' : 'Create campaign'}
             </Button>
           </div>

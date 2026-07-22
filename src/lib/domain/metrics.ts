@@ -42,7 +42,11 @@ function pct(n: number, d: number): number {
 export async function getMetrics(db: DB, campaignId?: string): Promise<CampaignMetrics> {
   let q = db.from('recipients').select('status, preferred_language');
   if (campaignId) q = q.eq('campaign_id', campaignId);
-  const { data: recips } = await q;
+  let vocQ = db.from('voc_recordings').select('*', { count: 'exact', head: true });
+  if (campaignId) vocQ = vocQ.eq('campaign_id', campaignId);
+
+  // Run both round-trips in parallel.
+  const [{ data: recips }, { count: vocSealed }] = await Promise.all([q, vocQ]);
   const rows = recips ?? [];
 
   const statusCounts: Record<string, number> = {};
@@ -66,10 +70,6 @@ export async function getMetrics(db: DB, campaignId?: string): Promise<CampaignM
     (statusCounts['issue_raised'] ?? 0) +
     (statusCounts['delivery_unreachable'] ?? 0) +
     (statusCounts['closed'] ?? 0);
-
-  let vocQ = db.from('voc_recordings').select('*', { count: 'exact', head: true });
-  if (campaignId) vocQ = vocQ.eq('campaign_id', campaignId);
-  const { count: vocSealed } = await vocQ;
 
   return {
     total,

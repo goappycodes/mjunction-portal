@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getLanguageMap, langName } from '@/lib/domain/languages';
+import { getCampaign } from '@/lib/domain/campaigns';
 import { statusLabel } from '@/lib/domain/labels';
 import { formatDate } from '@/lib/utils';
 import { ReportExport } from '@/components/report-export';
@@ -25,11 +26,7 @@ export default async function ReportsPage({
   await requireUser();
   const supabase = await createClient();
 
-  const { data: campaign } = await supabase
-    .from('campaigns')
-    .select('*')
-    .eq('id', campaignId)
-    .single();
+  const campaign = await getCampaign(campaignId);
   if (!campaign) notFound();
 
   let recipientsQuery = supabase

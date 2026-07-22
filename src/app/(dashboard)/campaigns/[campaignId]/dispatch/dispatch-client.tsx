@@ -71,8 +71,8 @@ function DispatchRow({ row }: { row: PendingRow }) {
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 w-36" />
       </td>
       <td className="py-2">
-        <Button size="sm" onClick={submit} disabled={pending || !awb}>
-          {pending ? '…' : 'Dispatch'}
+        <Button size="sm" onClick={submit} loading={pending} disabled={!awb}>
+          Dispatch
         </Button>
       </td>
     </tr>
@@ -108,8 +108,8 @@ function DeliverRow({ row }: { row: AwaitingRow }) {
         <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-8 w-36" />
       </td>
       <td className="py-2">
-        <Button size="sm" variant="success" onClick={submit} disabled={pending}>
-          {pending ? '…' : 'Mark delivered'}
+        <Button size="sm" variant="success" onClick={submit} loading={pending}>
+          Mark delivered
         </Button>
       </td>
     </tr>

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { getCampaign } from '@/lib/domain/campaigns';
 import { CampaignTabs } from './campaign-tabs';
 import { Badge } from '@/components/ui/primitives';
 
@@ -15,14 +15,7 @@ export default async function CampaignLayout({
   params: Promise<{ campaignId: string }>;
 }) {
   const { campaignId } = await params;
-  const user = await requireUser();
-  const supabase = await createClient();
-
-  const { data: campaign } = await supabase
-    .from('campaigns')
-    .select('*')
-    .eq('id', campaignId)
-    .single();
+  const [user, campaign] = await Promise.all([requireUser(), getCampaign(campaignId)]);
 
   if (!campaign) notFound();
 
