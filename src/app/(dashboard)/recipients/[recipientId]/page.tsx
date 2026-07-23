@@ -86,7 +86,7 @@ export default async function RecipientPage({
       <div>
         {campaign && (
           <Link
-            href={`/campaigns/${campaign.id}/recipients`}
+            href={`/recipients?campaign=${campaign.id}`}
             className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
           >
             ← {campaign.calling_from}

@@ -10,6 +10,9 @@ import {
   Users,
   LogOut,
   PhoneCall,
+  Upload,
+  ClipboardList,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@/lib/database.types';
@@ -33,6 +36,14 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
+    ],
+  },
+  {
+    heading: 'Operations',
+    items: [
+      { href: '/import', label: 'Import', icon: Upload, adminOnly: true },
+      { href: '/recipients', label: 'Recipients', icon: ClipboardList },
+      { href: '/voc', label: 'VOC & Reports', icon: FileText },
     ],
   },
   {

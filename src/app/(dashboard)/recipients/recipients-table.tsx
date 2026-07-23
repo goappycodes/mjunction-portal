@@ -65,9 +65,9 @@ export function RecipientsTable({ rows }: { rows: RecipientRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+    <div className="max-h-[65vh] overflow-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       <table className="w-full text-sm">
-        <thead className="border-b border-[var(--border)] bg-[var(--muted-surface)]">
+        <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--muted-surface)]">
           {table.getHeaderGroups().map((hg) => (
             <tr key={hg.id}>
               {hg.headers.map((h) => (

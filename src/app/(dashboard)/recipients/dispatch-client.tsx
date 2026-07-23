@@ -131,7 +131,7 @@ export function DispatchClient({
         </CardHeader>
         <CardContent>
           {pending.length ? (
-            <div className="overflow-x-auto">
+            <div className="max-h-[45vh] overflow-auto">
               <table className="w-full text-sm">
                 <tbody>
                   {pending.map((r) => (
@@ -154,7 +154,7 @@ export function DispatchClient({
         </CardHeader>
         <CardContent>
           {awaiting.length ? (
-            <div className="overflow-x-auto">
+            <div className="max-h-[45vh] overflow-auto">
               <table className="w-full text-sm">
                 <tbody>
                   {awaiting.map((r) => (

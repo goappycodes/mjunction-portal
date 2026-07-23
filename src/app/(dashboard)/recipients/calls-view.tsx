@@ -1,4 +1,4 @@
-import { requireUser } from '@/lib/auth';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getLanguageMap, langName } from '@/lib/domain/languages';
 import { CallRunner } from './call-runner';
@@ -9,23 +9,27 @@ import { CALL_TYPE_LABELS, OUTCOME_LABELS } from '@/lib/domain/labels';
 import { formatDateTime } from '@/lib/utils';
 import type { CallOutcome, CallType, CallerType } from '@/lib/database.types';
 
-export const dynamic = 'force-dynamic';
+const PAGE_SIZE = 15;
+const BASE = '/recipients';
 
-export default async function CallsPage({
-  params,
-  searchParams,
+export async function CallsView({
+  campaignId,
+  isAdmin,
+  sp,
 }: {
-  params: Promise<{ campaignId: string }>;
-  searchParams: Promise<{ type?: string; outcome?: string; caller?: string }>;
+  campaignId: string;
+  isAdmin: boolean;
+  sp: { type?: string; outcome?: string; caller?: string; page?: string };
 }) {
-  const { campaignId } = await params;
-  const sp = await searchParams;
-  const user = await requireUser();
   const supabase = await createClient();
+
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
 
   let recentQuery = supabase
     .from('call_attempts')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('campaign_id', campaignId);
   if (sp.type) recentQuery = recentQuery.eq('call_type', sp.type as CallType);
   if (sp.outcome) recentQuery = recentQuery.eq('outcome', sp.outcome as CallOutcome);
@@ -42,15 +46,27 @@ export default async function CallsPage({
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId)
       .in('status', DELIVERY_CALLABLE),
-    recentQuery.order('created_at', { ascending: false }).limit(30),
+    recentQuery.order('created_at', { ascending: false }).range(from, to),
     getLanguageMap(supabase),
   ]);
 
-  const callsBase = `/campaigns/${campaignId}/calls`;
+  const total = recentRes.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const qsFor = (p: number) => {
+    const u = new URLSearchParams();
+    u.set('campaign', campaignId);
+    u.set('view', 'calls');
+    if (sp.type) u.set('type', sp.type);
+    if (sp.outcome) u.set('outcome', sp.outcome);
+    if (sp.caller) u.set('caller', sp.caller);
+    u.set('page', String(p));
+    return `${BASE}?${u.toString()}`;
+  };
+  const resetHref = `${BASE}?campaign=${campaignId}&view=calls`;
 
   return (
     <div className="space-y-6">
-      {user.role === 'admin' ? (
+      {isAdmin ? (
         <CallRunner
           campaignId={campaignId}
           orderEligible={orderCount.count ?? 0}
@@ -65,7 +81,9 @@ export default async function CallsPage({
         </Card>
       )}
 
-      <FilterBar action={callsBase} resetHref={callsBase}>
+      <FilterBar action={BASE} resetHref={resetHref}>
+        <input type="hidden" name="campaign" value={campaignId} />
+        <input type="hidden" name="view" value="calls" />
         <FilterField label="Call type">
           <Select name="type" defaultValue={sp.type ?? ''} className="w-52">
             <option value="">All types</option>
@@ -97,12 +115,12 @@ export default async function CallsPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent call attempts</CardTitle>
+          <CardTitle>Call attempts{total ? ` (${total})` : ''}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="max-h-[55vh] overflow-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-[var(--border)] text-left text-[var(--muted)]">
+              <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--surface)] text-left text-[var(--muted)]">
                 <tr>
                   <th className="py-2 pr-4 font-medium">When</th>
                   <th className="py-2 pr-4 font-medium">Type</th>
@@ -146,6 +164,26 @@ export default async function CallsPage({
               </tbody>
             </table>
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between text-sm">
+              <span className="text-[var(--muted)]">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 && (
+                  <Link href={qsFor(page - 1)} className="rounded-lg border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
+                    Previous
+                  </Link>
+                )}
+                {page < totalPages && (
+                  <Link href={qsFor(page + 1)} className="rounded-lg border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
+                    Next
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

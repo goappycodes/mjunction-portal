@@ -101,6 +101,7 @@ export async function runCallBatch(input: {
   }
 
   revalidatePath(`/campaigns/${input.campaignId}`, 'layout');
+  revalidatePath('/recipients');
   revalidatePath('/queue/escalations');
   revalidatePath('/queue/unreachable');
   return result;
@@ -150,6 +151,7 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
   }
 
   revalidatePath(`/recipients/${recipientId}`);
+  revalidatePath('/recipients');
   revalidatePath('/queue/unreachable');
   revalidatePath(`/campaigns/${r.campaign_id}`, 'layout');
   return { placed: 1, confirmed: 0, escalated: 0, unreachable: 0 };

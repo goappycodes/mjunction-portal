@@ -104,7 +104,7 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
             <Button variant="secondary" onClick={reset}>
               Import another file
             </Button>
-            <Button onClick={() => router.push(`/campaigns/${campaignId}/recipients`)}>
+            <Button onClick={() => router.push(`/recipients?campaign=${campaignId}`)}>
               View recipients
             </Button>
           </div>

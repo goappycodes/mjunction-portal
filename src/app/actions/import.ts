@@ -105,6 +105,7 @@ export async function commitImport(input: {
   }
 
   revalidatePath(`/campaigns/${input.campaignId}`, 'layout');
+  revalidatePath('/recipients');
   return {
     inserted: toInsert.length,
     skippedDuplicates,

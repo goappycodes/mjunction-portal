@@ -16,13 +16,7 @@ export function CampaignTabs({
 
   const tabs: { href: string; label: string; adminOnly?: boolean }[] = [
     { href: base, label: 'Overview' },
-    { href: `${base}/recipients`, label: 'Recipients' },
-    { href: `${base}/import`, label: 'Import', adminOnly: true },
-    { href: `${base}/calls`, label: 'Calls' },
-    { href: `${base}/dispatch`, label: 'Dispatch', adminOnly: true },
-    { href: `${base}/voc`, label: 'VOC vault' },
     { href: `${base}/language`, label: 'Language', adminOnly: true },
-    { href: `${base}/reports`, label: 'Reports' },
   ];
 
   const visible = tabs.filter((t) => !t.adminOnly || isAdmin);

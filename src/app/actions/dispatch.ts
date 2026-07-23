@@ -64,7 +64,7 @@ export async function saveDispatch(input: {
     payload: { stage: 'dispatched', courier: parsed.data.courier_name },
   });
 
-  revalidatePath(`/campaigns/${r.campaign_id}/dispatch`);
+  revalidatePath('/recipients');
   revalidatePath(`/recipients/${r.id}`);
   return { ok: true };
 }
@@ -117,7 +117,7 @@ export async function markDelivered(input: {
     actorType: 'system',
   });
 
-  revalidatePath(`/campaigns/${r.campaign_id}/dispatch`);
+  revalidatePath('/recipients');
   revalidatePath(`/recipients/${r.id}`);
   return { ok: true };
 }

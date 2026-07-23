@@ -1,21 +1,17 @@
-import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { DispatchClient, type AwaitingRow, type PendingRow } from './dispatch-client';
 import { Input } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 
-export const dynamic = 'force-dynamic';
+const BASE = '/recipients';
 
-export default async function DispatchPage({
-  params,
-  searchParams,
+export async function DispatchView({
+  campaignId,
+  sp,
 }: {
-  params: Promise<{ campaignId: string }>;
-  searchParams: Promise<{ q?: string }>;
+  campaignId: string;
+  sp: { q?: string };
 }) {
-  const { campaignId } = await params;
-  const sp = await searchParams;
-  await requireAdmin();
   const supabase = await createClient();
 
   let pendingQuery = supabase
@@ -34,7 +30,7 @@ export default async function DispatchPage({
   if (sp.q) dispatchedQuery = dispatchedQuery.ilike('customer_name', `%${sp.q}%`);
   const { data: dispatchedRows } = await dispatchedQuery.order('updated_at', { ascending: true });
 
-  const dispatchBase = `/campaigns/${campaignId}/dispatch`;
+  const resetHref = `${BASE}?campaign=${campaignId}&view=dispatch`;
 
   const awaiting: AwaitingRow[] = (dispatchedRows ?? []).map((r) => {
     const d = Array.isArray(r.dispatches) ? r.dispatches[0] : r.dispatches;
@@ -50,7 +46,9 @@ export default async function DispatchPage({
 
   return (
     <div className="space-y-4">
-      <FilterBar action={dispatchBase} resetHref={dispatchBase}>
+      <FilterBar action={BASE} resetHref={resetHref}>
+        <input type="hidden" name="campaign" value={campaignId} />
+        <input type="hidden" name="view" value="dispatch" />
         <FilterField label="Search">
           <Input name="q" defaultValue={sp.q ?? ''} placeholder="Customer name" className="w-64" />
         </FilterField>

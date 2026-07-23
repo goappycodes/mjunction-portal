@@ -1,33 +1,35 @@
-import { notFound } from 'next/navigation';
-import { requireUser } from '@/lib/auth';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getLanguageMap, langName } from '@/lib/domain/languages';
 import { getCampaign } from '@/lib/domain/campaigns';
-import { statusLabel } from '@/lib/domain/labels';
+import { statusLabel, STATUS_LABELS } from '@/lib/domain/labels';
 import { formatDate } from '@/lib/utils';
 import { ReportExport } from '@/components/report-export';
 import { Card, CardContent, CardHeader, CardTitle, Select } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
-import { STATUS_LABELS } from '@/lib/domain/labels';
 import type { CampaignReport, ReportRow } from '@/lib/exports/types';
 import type { RecipientStatus } from '@/lib/database.types';
 
-export const dynamic = 'force-dynamic';
+const PAGE_SIZE = 15;
+const BASE = '/voc';
 
-export default async function ReportsPage({
-  params,
-  searchParams,
+export async function ReportsView({
+  campaignId,
+  sp,
 }: {
-  params: Promise<{ campaignId: string }>;
-  searchParams: Promise<{ status?: string }>;
+  campaignId: string;
+  sp: { status?: string; page?: string };
 }) {
-  const { campaignId } = await params;
-  const sp = await searchParams;
-  await requireUser();
   const supabase = await createClient();
 
   const campaign = await getCampaign(campaignId);
-  if (!campaign) notFound();
+  if (!campaign) {
+    return (
+      <Card className="p-12 text-center">
+        <p className="text-sm text-[var(--muted)]">Campaign not found.</p>
+      </Card>
+    );
+  }
 
   let recipientsQuery = supabase
     .from('recipients')
@@ -83,12 +85,29 @@ export default async function ReportsPage({
     };
   });
 
+  // The export always contains every row matching the current filter; the
+  // preview table below is paginated 15 per page.
   const report: CampaignReport = {
     campaignName: campaign.calling_from,
     orderReference: campaign.order_reference ?? '',
     generatedAt: formatDate(new Date().toISOString()),
     rows,
   };
+
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(Math.max(1, parseInt(sp.page ?? '1', 10) || 1), totalPages);
+  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const qsFor = (p: number) => {
+    const u = new URLSearchParams();
+    u.set('campaign', campaignId);
+    u.set('view', 'reports');
+    if (sp.status) u.set('status', sp.status);
+    u.set('page', String(p));
+    return `${BASE}?${u.toString()}`;
+  };
+  const resetHref = `${BASE}?campaign=${campaignId}&view=reports`;
 
   return (
     <div className="space-y-4">
@@ -99,14 +118,16 @@ export default async function ReportsPage({
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
             Recipient-wise status, confirmation dates, language and the sealed VOC id — the
-            artefact sent to mjunction. {rows.length} recipient(s)
+            artefact sent to mjunction. {total} recipient(s)
             {sp.status ? ' (filtered)' : ''}.
           </p>
           <FilterBar
-            action={`/campaigns/${campaignId}/reports`}
-            resetHref={`/campaigns/${campaignId}/reports`}
+            action={BASE}
+            resetHref={resetHref}
             className="!p-0 !border-0 !bg-transparent !shadow-none"
           >
+            <input type="hidden" name="campaign" value={campaignId} />
+            <input type="hidden" name="view" value="reports" />
             <FilterField label="Status filter">
               <Select name="status" defaultValue={sp.status ?? ''} className="w-56">
                 <option value="">All statuses</option>
@@ -122,9 +143,9 @@ export default async function ReportsPage({
         </CardContent>
       </Card>
 
-      <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+      <div className="max-h-[55vh] overflow-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
         <table className="w-full text-sm">
-          <thead className="border-b border-[var(--border)] bg-[var(--muted-surface)] text-left text-[var(--muted)]">
+          <thead className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--muted-surface)] text-left text-[var(--muted)]">
             <tr>
               <th className="px-3 py-2 font-medium">Customer</th>
               <th className="px-3 py-2 font-medium">Contact</th>
@@ -137,7 +158,7 @@ export default async function ReportsPage({
             </tr>
           </thead>
           <tbody>
-            {rows.slice(0, 100).map((r, i) => (
+            {pageRows.map((r, i) => (
               <tr key={i} className="border-b border-[var(--border)] last:border-0">
                 <td className="px-3 py-1.5">{r.customer_name}</td>
                 <td className="px-3 py-1.5 font-mono text-xs">{r.contact}</td>
@@ -149,13 +170,35 @@ export default async function ReportsPage({
                 <td className="px-3 py-1.5 font-mono text-xs">{r.sealed_voc_id}</td>
               </tr>
             ))}
+            {!pageRows.length && (
+              <tr>
+                <td colSpan={8} className="py-8 text-center text-[var(--muted)]">
+                  No recipients match this filter.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-      {rows.length > 100 && (
-        <p className="text-xs text-[var(--muted)]">
-          Showing first 100 rows in preview; export contains all {rows.length}.
-        </p>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-[var(--muted)]">
+            Page {page} of {totalPages} · export contains all {total}
+          </span>
+          <div className="flex gap-2">
+            {page > 1 && (
+              <Link href={qsFor(page - 1)} className="rounded-lg border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
+                Previous
+              </Link>
+            )}
+            {page < totalPages && (
+              <Link href={qsFor(page + 1)} className="rounded-lg border px-3 py-1.5 hover:bg-[var(--muted-surface)]">
+                Next
+              </Link>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getLanguageMap, getLanguages, langName } from '@/lib/domain/languages';
 import { RecipientsTable, type RecipientRow } from './recipients-table';
@@ -8,20 +7,16 @@ import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { STATUS_LABELS } from '@/lib/domain/labels';
 import type { RecipientStatus } from '@/lib/database.types';
 
-export const dynamic = 'force-dynamic';
-
 const PAGE_SIZE = 15;
+const BASE = '/recipients';
 
-export default async function RecipientsPage({
-  params,
-  searchParams,
+export async function RecipientsView({
+  campaignId,
+  sp,
 }: {
-  params: Promise<{ campaignId: string }>;
-  searchParams: Promise<{ status?: string; q?: string; lang?: string; page?: string }>;
+  campaignId: string;
+  sp: { status?: string; q?: string; lang?: string; page?: string };
 }) {
-  const { campaignId } = await params;
-  const sp = await searchParams;
-  await requireUser();
   const supabase = await createClient();
 
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
@@ -58,19 +53,23 @@ export default async function RecipientsPage({
 
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const base = `/campaigns/${campaignId}/recipients`;
   const qsFor = (p: number) => {
     const u = new URLSearchParams();
+    u.set('campaign', campaignId);
+    u.set('view', 'recipients');
     if (sp.status) u.set('status', sp.status);
     if (sp.q) u.set('q', sp.q);
     if (sp.lang) u.set('lang', sp.lang);
     u.set('page', String(p));
-    return `${base}?${u.toString()}`;
+    return `${BASE}?${u.toString()}`;
   };
+  const resetHref = `${BASE}?campaign=${campaignId}&view=recipients`;
 
   return (
     <div className="space-y-4">
-      <FilterBar action={base} resetHref={base}>
+      <FilterBar action={BASE} resetHref={resetHref}>
+        <input type="hidden" name="campaign" value={campaignId} />
+        <input type="hidden" name="view" value="recipients" />
         <FilterField label="Search">
           <Input name="q" defaultValue={sp.q ?? ''} placeholder="Name, phone or product" className="w-56" />
         </FilterField>
