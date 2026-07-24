@@ -12,6 +12,7 @@ export default async function VocReportsPage({
     q?: string;
     lang?: string;
     status?: string;
+    sort?: string;
     page?: string;
   }>;
 }) {

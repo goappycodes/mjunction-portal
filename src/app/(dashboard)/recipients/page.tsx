@@ -12,6 +12,7 @@ export default async function RecipientsHubPage({
     q?: string;
     status?: string;
     lang?: string;
+    sort?: string;
     page?: string;
   }>;
 }) {

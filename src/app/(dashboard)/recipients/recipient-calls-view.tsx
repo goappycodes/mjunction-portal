@@ -29,7 +29,7 @@ export async function RecipientCallsView({
 }: {
   campaignId?: string;
   isAdmin: boolean;
-  sp: { status?: string; q?: string; lang?: string; page?: string };
+  sp: { status?: string; q?: string; lang?: string; sort?: string; page?: string };
 }) {
   const supabase = await createClient();
 
@@ -50,6 +50,7 @@ export async function RecipientCallsView({
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
+  const sort = sp.sort ?? 'recent';
 
   let query = supabase.from('recipients').select('*', { count: 'exact' });
   if (activeCampaignId) query = query.eq('campaign_id', activeCampaignId);
@@ -86,8 +87,13 @@ export async function RecipientCallsView({
         ])
       : Promise.resolve(null);
 
+  const ordered =
+    sort === 'name'
+      ? query.order('customer_name', { ascending: true })
+      : query.order('updated_at', { ascending: false });
+
   const [{ data: recipients, count }, allLanguages, counts] = await Promise.all([
-    query.order('updated_at', { ascending: false }).range(from, to),
+    ordered.range(from, to),
     getLanguages(supabase),
     countsPromise,
   ]);
@@ -142,7 +148,7 @@ export async function RecipientCallsView({
       )}
 
       <TableFilters
-        key={[activeCampaignId ?? '', sp.lang ?? '', sp.status ?? ''].join('|')}
+        key={[activeCampaignId ?? '', sp.lang ?? '', sp.status ?? '', sp.sort ?? ''].join('|')}
         basePath={BASE}
         searchPlaceholder="Name, phone or product"
         selects={[
@@ -176,6 +182,15 @@ export async function RecipientCallsView({
               ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
             ],
           },
+          {
+            name: 'sort',
+            label: 'Sort by',
+            width: 'w-44',
+            options: [
+              { value: 'recent', label: 'Newest first' },
+              { value: 'name', label: 'Name (A–Z)' },
+            ],
+          },
         ]}
       />
 
@@ -190,6 +205,7 @@ export async function RecipientCallsView({
             status: sp.status,
             q: sp.q,
             lang: sp.lang,
+            sort: sp.sort,
             page: p,
           })
         }

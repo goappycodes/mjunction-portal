@@ -27,7 +27,7 @@ export async function VaultView({
   sp,
 }: {
   campaignId?: string;
-  sp: { q?: string; lang?: string; status?: string; page?: string };
+  sp: { q?: string; lang?: string; status?: string; sort?: string; page?: string };
 }) {
   const supabase = await createClient();
 
@@ -60,7 +60,10 @@ export async function VaultView({
     recipientsQuery = recipientsQuery.eq('status', sp.status as RecipientStatus);
   }
 
-  const { data: recipients } = await recipientsQuery.order('customer_name');
+  const sort = sp.sort ?? 'recent';
+  const { data: recipients } = await (sort === 'name'
+    ? recipientsQuery.order('customer_name', { ascending: true })
+    : recipientsQuery.order('updated_at', { ascending: false }));
   const recipientIds = (recipients ?? []).map((r) => r.id);
   const idFilter = recipientIds.length ? recipientIds : [NO_MATCH];
 
@@ -214,6 +217,15 @@ export async function VaultView({
               ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
             ],
           },
+          {
+            name: 'sort',
+            label: 'Sort by',
+            width: 'w-44',
+            options: [
+              { value: 'recent', label: 'Newest first' },
+              { value: 'name', label: 'Name (A–Z)' },
+            ],
+          },
         ]}
       >
         <ReportExport report={report} />
@@ -238,6 +250,7 @@ export async function VaultView({
             q: sp.q,
             lang: sp.lang,
             status: sp.status,
+            sort: sp.sort,
             page: p,
           })
         }
