@@ -1,12 +1,17 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { Card, Badge, Select } from '@/components/ui/primitives';
+import { Badge, Select } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import { PageHeader } from '@/components/page-header';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, buildQuery } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
+
+const PAGE_SIZE = 15;
+const BASE = '/queue/escalations';
 
 interface QueueItem {
   id: string;
@@ -20,10 +25,11 @@ interface QueueItem {
 export default async function EscalationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; page?: string }>;
 }) {
   const sp = await searchParams;
   const typeFilter = sp.type ?? '';
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   await requireUser();
   const supabase = await createClient();
 
@@ -81,6 +87,10 @@ export default async function EscalationsPage({
   else if (typeFilter === 'delivery') items = items.filter((i) => i.type.startsWith('Delivery'));
   items.sort((a, b) => a.updated_at.localeCompare(b.updated_at));
 
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageItems = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -96,53 +106,55 @@ export default async function EscalationsPage({
             <option value="delivery">Delivery — issue raised</option>
           </Select>
         </FilterField>
-        <span className="self-center text-sm text-[var(--muted)]">{items.length} open</span>
+        <span className="self-center text-sm text-[var(--muted)]">{total} open</span>
       </FilterBar>
 
-      {items.length ? (
-        <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[var(--border)] bg-[var(--muted-surface)] text-left text-[var(--muted)]">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">Recipient</th>
-                <th className="px-4 py-2.5 font-medium">Campaign</th>
-                <th className="px-4 py-2.5 font-medium">Type</th>
-                <th className="px-4 py-2.5 font-medium">Waiting since</th>
-                <th className="px-4 py-2.5 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((it) => (
-                <tr key={`${it.type}-${it.id}`} className="border-b border-[var(--border)] last:border-0">
-                  <td className="px-4 py-2.5">
-                    <p className="font-medium">{it.customer_name ?? '—'}</p>
-                    <p className="font-mono text-xs text-[var(--muted)]">{it.contact}</p>
-                  </td>
-                  <td className="px-4 py-2.5">{it.campaign ?? '—'}</td>
-                  <td className="px-4 py-2.5">
-                    <Badge color={it.type.startsWith('Order') ? 'amber' : 'red'}>{it.type}</Badge>
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-[var(--muted)]">
-                    {formatDateTime(it.updated_at)}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <Link
-                      href={`/recipients/${it.id}`}
-                      className="font-medium text-[var(--primary)] hover:underline"
-                    >
-                      Handle →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <Card className="p-12 text-center">
-          <p className="text-sm text-[var(--muted)]">No open escalations. 🎉</p>
-        </Card>
-      )}
+      <DataTable
+        columns={columns}
+        rows={pageItems}
+        rowKey={(it) => `${it.type}-${it.id}`}
+        className="max-h-[calc(100vh-15rem)]"
+        empty="No open escalations. 🎉"
+      />
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        hrefFor={(p) => buildQuery(BASE, { type: sp.type, page: p })}
+      />
     </div>
   );
 }
+
+const columns: Column<QueueItem>[] = [
+  {
+    header: 'Recipient',
+    cell: (it) => (
+      <>
+        <p className="font-medium">{it.customer_name ?? '—'}</p>
+        <p className="font-mono text-xs text-[var(--muted)]">{it.contact}</p>
+      </>
+    ),
+  },
+  { header: 'Campaign', cell: (it) => it.campaign ?? '—' },
+  {
+    header: 'Type',
+    cell: (it) => <Badge color={it.type.startsWith('Order') ? 'amber' : 'red'}>{it.type}</Badge>,
+  },
+  {
+    header: 'Waiting since',
+    className: 'text-xs text-[var(--muted)]',
+    cell: (it) => formatDateTime(it.updated_at),
+  },
+  {
+    header: '',
+    cell: (it) => (
+      <Link
+        href={`/recipients/${it.id}`}
+        className="font-medium text-[var(--primary)] hover:underline"
+      >
+        Handle →
+      </Link>
+    ),
+  },
+];

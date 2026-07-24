@@ -1,10 +1,12 @@
 'use client';
 
-import { useActionState, useState, useTransition } from 'react';
+import { useActionState, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUser, setUserRole, type UserActionState } from '@/app/actions/users';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, Input, Label, Select, Badge } from '@/components/ui/primitives';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { Spinner } from '@/components/ui/spinner';
 import { formatDate } from '@/lib/utils';
 import type { Profile, UserRole } from '@/lib/database.types';
 
@@ -64,51 +66,61 @@ export function RoleControl({ user, selfId }: { user: Profile; selfId: string })
   const isSelf = user.id === selfId;
 
   return (
-    <Select
-      value={role}
-      disabled={pending || isSelf}
-      onChange={(e) => {
-        const next = e.target.value as UserRole;
-        setRole(next);
-        start(async () => {
-          await setUserRole(user.id, next);
-          router.refresh();
-        });
-      }}
-      className="h-8 w-32"
-    >
-      <option value="telecaller">Telecaller</option>
-      <option value="admin">Admin</option>
-    </Select>
+    <div className="flex items-center gap-2">
+      <Select
+        value={role}
+        disabled={pending || isSelf}
+        onChange={(e) => {
+          const next = e.target.value as UserRole;
+          setRole(next);
+          start(async () => {
+            await setUserRole(user.id, next);
+            router.refresh();
+          });
+        }}
+        className="h-8 w-32"
+      >
+        <option value="telecaller">Telecaller</option>
+        <option value="admin">Admin</option>
+      </Select>
+      {pending && <Spinner size={14} className="text-[var(--muted)]" />}
+    </div>
   );
 }
 
 export function UsersTable({ users, selfId }: { users: Profile[]; selfId: string }) {
+  const columns = useMemo<Column<Profile>[]>(
+    () => [
+      {
+        header: 'Name',
+        cell: (u) => (
+          <>
+            <span className="font-medium">{u.full_name ?? '—'}</span>
+            {u.id === selfId && (
+              <Badge color="blue" className="ml-2">
+                you
+              </Badge>
+            )}
+          </>
+        ),
+      },
+      { header: 'Role', cell: (u) => <RoleControl user={u} selfId={selfId} /> },
+      {
+        header: 'Created',
+        className: 'text-xs text-[var(--muted)]',
+        cell: (u) => formatDate(u.created_at),
+      },
+    ],
+    [selfId],
+  );
+
   return (
-    <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
-      <table className="w-full text-sm">
-        <thead className="border-b border-[var(--border)] bg-[var(--muted-surface)] text-left text-[var(--muted)]">
-          <tr>
-            <th className="px-4 py-2.5 font-medium">Name</th>
-            <th className="px-4 py-2.5 font-medium">Role</th>
-            <th className="px-4 py-2.5 font-medium">Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u) => (
-            <tr key={u.id} className="border-b border-[var(--border)] last:border-0">
-              <td className="px-4 py-2.5">
-                <span className="font-medium">{u.full_name ?? '—'}</span>
-                {u.id === selfId && <Badge color="blue" className="ml-2">you</Badge>}
-              </td>
-              <td className="px-4 py-2.5">
-                <RoleControl user={u} selfId={selfId} />
-              </td>
-              <td className="px-4 py-2.5 text-xs text-[var(--muted)]">{formatDate(u.created_at)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      rows={users}
+      rowKey={(u) => u.id}
+      className="max-h-[calc(100vh-15rem)]"
+      empty="No users match this filter."
+    />
   );
 }

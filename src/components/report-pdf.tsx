@@ -22,6 +22,7 @@ const styles = StyleSheet.create({
 });
 
 const COLS: { key: keyof CampaignReport['rows'][number]; label: string; wide?: 'name' | 'voc' }[] = [
+  { key: 'campaign', label: 'Campaign', wide: 'name' },
   { key: 'customer_name', label: 'Customer', wide: 'name' },
   { key: 'contact', label: 'Contact' },
   { key: 'product', label: 'Product', wide: 'name' },
@@ -30,6 +31,8 @@ const COLS: { key: keyof CampaignReport['rows'][number]; label: string; wide?: '
   { key: 'delivered', label: 'Delivered' },
   { key: 'delivery_confirmed', label: 'Confirmed' },
   { key: 'sealed_voc_id', label: 'Sealed VOC ID', wide: 'voc' },
+  { key: 'dtmf', label: 'DTMF' },
+  { key: 'duration', label: 'Duration' },
 ];
 
 export function ReportDoc({ report }: { report: CampaignReport }) {

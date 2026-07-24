@@ -12,10 +12,10 @@ export interface CampaignOption {
 }
 
 /**
- * Searchable campaign dropdown shared by the Import, Recipients and
- * VOC & Reports sidebar pages. Campaigns are passed already sorted
- * (latest first); selecting one navigates to `${basePath}?campaign=<id>`
- * while preserving any params in `preserve` (e.g. the active sub-view).
+ * Searchable campaign dropdown used by the Import page. Campaigns are passed
+ * already sorted (latest first); selecting one navigates to
+ * `${basePath}?campaign=<id>` while preserving any params in `preserve`.
+ * (Recipients and VOC & Reports select the campaign inline via `TableFilters`.)
  */
 export function CampaignSelector({
   campaigns,

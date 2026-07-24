@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, Input, Select, Badge } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { formatDate } from '@/lib/utils';
 
@@ -90,12 +91,10 @@ export default async function CampaignsPage({
           ))}
         </div>
       ) : (
-        <Card className="p-12 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            {sp.q ? 'No campaigns match your search.' : 'No campaigns yet.'}
-            {!sp.q && user.role === 'admin' && ' Create one to get started.'}
-          </p>
-        </Card>
+        <EmptyState>
+          {sp.q ? 'No campaigns match your search.' : 'No campaigns yet.'}
+          {!sp.q && user.role === 'admin' && ' Create one to get started.'}
+        </EmptyState>
       )}
     </div>
   );

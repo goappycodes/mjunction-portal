@@ -18,7 +18,7 @@ export function LanguageConfigForm({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [entries, setEntries] = useState<LanguageConfigEntry[]>(
-    campaign.language_config.length
+    campaign.language_config?.length
       ? campaign.language_config
       : [{ dtmf: '1', lang: 'hi' }],
   );

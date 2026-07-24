@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ImportWizard } from './import-wizard';
 import { CampaignSelector, type CampaignOption } from '@/components/campaign-selector';
 import { PageHeader } from '@/components/page-header';
-import { Card } from '@/components/ui/primitives';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,13 +43,11 @@ export default async function ImportPage({
       {selected ? (
         <ImportWizard key={selected} campaignId={selected} />
       ) : (
-        <Card className="p-12 text-center">
-          <p className="text-sm text-[var(--muted)]">
-            {options.length
-              ? 'Select a campaign above to import recipients into it.'
-              : 'No campaigns yet. Create a campaign first, then import recipients.'}
-          </p>
-        </Card>
+        <EmptyState>
+          {options.length
+            ? 'Select a campaign above to import recipients into it.'
+            : 'No campaigns yet. Create a campaign first, then import recipients.'}
+        </EmptyState>
       )}
     </div>
   );
