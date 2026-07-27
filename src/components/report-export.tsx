@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import type { CampaignReport } from '@/lib/exports/types';
 
 const HEADERS: Record<keyof CampaignReport['rows'][number], string> = {
+  campaign: 'Campaign',
   customer_name: 'Customer Name',
   contact: 'Contact',
   product: 'Product',
@@ -16,6 +17,8 @@ const HEADERS: Record<keyof CampaignReport['rows'][number], string> = {
   delivered: 'Delivered',
   delivery_confirmed: 'Delivery Confirmed',
   sealed_voc_id: 'Sealed VOC ID',
+  dtmf: 'DTMF',
+  duration: 'Duration',
 };
 
 export function ReportExport({ report }: { report: CampaignReport }) {
@@ -59,7 +62,7 @@ export function ReportExport({ report }: { report: CampaignReport }) {
   return (
     <div className="flex gap-2">
       <Button
-        variant="secondary"
+        variant="success"
         onClick={exportExcel}
         loading={busy === 'xlsx'}
         disabled={busy !== null}
@@ -67,7 +70,7 @@ export function ReportExport({ report }: { report: CampaignReport }) {
         {busy === 'xlsx' ? 'Building…' : 'Export Excel'}
       </Button>
       <Button
-        variant="secondary"
+        variant="danger"
         onClick={exportPdf}
         loading={busy === 'pdf'}
         disabled={busy !== null}

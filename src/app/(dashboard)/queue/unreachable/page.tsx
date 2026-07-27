@@ -1,20 +1,25 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { Card, Input, Select } from '@/components/ui/primitives';
+import { Input, Select } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { Pagination } from '@/components/ui/pagination';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { RetryButton } from './retry-button';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, buildQuery } from '@/lib/utils';
 import type { RecipientStatus } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
+const PAGE_SIZE = 15;
+const BASE = '/queue/unreachable';
+
 export default async function UnreachablePage({
   searchParams,
 }: {
-  searchParams: Promise<{ stage?: string; q?: string }>;
+  searchParams: Promise<{ stage?: string; q?: string; page?: string }>;
 }) {
   const sp = await searchParams;
   await requireUser();
@@ -27,19 +32,51 @@ export default async function UnreachablePage({
         ? ['delivery_unreachable']
         : ['order_unreachable', 'delivery_unreachable'];
 
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
+  const from = (page - 1) * PAGE_SIZE;
+
   let query = supabase
     .from('recipients')
-    .select('id, customer_name, contact_no_e164, status, updated_at, campaigns(calling_from)')
+    .select('id, customer_name, contact_no_e164, status, updated_at, campaigns(calling_from)', {
+      count: 'exact',
+    })
     .in('status', stageStatuses);
   if (sp.q) {
     query = query.or(`customer_name.ilike.%${sp.q}%,contact_no_e164.ilike.%${sp.q}%`);
   }
-  const { data: rows } = await query.order('updated_at', { ascending: true });
+  const { data: rows, count } = await query
+    .order('updated_at', { ascending: true })
+    .range(from, from + PAGE_SIZE - 1);
+
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const cname = (c: unknown) => {
     const cc = Array.isArray(c) ? c[0] : c;
     return (cc as { calling_from?: string } | null)?.calling_from ?? '—';
   };
+
+  const columns: Column<NonNullable<typeof rows>[number]>[] = [
+    {
+      header: 'Recipient',
+      cell: (r) => (
+        <>
+          <Link href={`/recipients/${r.id}`} className="font-medium hover:underline">
+            {r.customer_name ?? '—'}
+          </Link>
+          <p className="font-mono text-xs text-[var(--muted)]">{r.contact_no_e164}</p>
+        </>
+      ),
+    },
+    { header: 'Campaign', cell: (r) => cname(r.campaigns) },
+    { header: 'Stage', cell: (r) => <StatusBadge status={r.status} /> },
+    {
+      header: 'Since',
+      className: 'text-xs text-[var(--muted)]',
+      cell: (r) => formatDateTime(r.updated_at),
+    },
+    { header: 'Actions', cell: (r) => <RetryButton recipientId={r.id} /> },
+  ];
 
   return (
     <div className="space-y-4">
@@ -59,50 +96,22 @@ export default async function UnreachablePage({
             <option value="delivery">Delivery unreachable</option>
           </Select>
         </FilterField>
-        <span className="self-center text-sm text-[var(--muted)]">{rows?.length ?? 0} pending</span>
+        <span className="self-center text-sm text-[var(--muted)]">{total} pending</span>
       </FilterBar>
 
-      {rows && rows.length ? (
-        <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
-          <table className="w-full text-sm">
-            <thead className="border-b border-[var(--border)] bg-[var(--muted-surface)] text-left text-[var(--muted)]">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">Recipient</th>
-                <th className="px-4 py-2.5 font-medium">Campaign</th>
-                <th className="px-4 py-2.5 font-medium">Stage</th>
-                <th className="px-4 py-2.5 font-medium">Since</th>
-                <th className="px-4 py-2.5 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
-                  <td className="px-4 py-2.5">
-                    <Link href={`/recipients/${r.id}`} className="font-medium hover:underline">
-                      {r.customer_name ?? '—'}
-                    </Link>
-                    <p className="font-mono text-xs text-[var(--muted)]">{r.contact_no_e164}</p>
-                  </td>
-                  <td className="px-4 py-2.5">{cname(r.campaigns)}</td>
-                  <td className="px-4 py-2.5">
-                    <StatusBadge status={r.status} />
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-[var(--muted)]">
-                    {formatDateTime(r.updated_at)}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <RetryButton recipientId={r.id} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <Card className="p-12 text-center">
-          <p className="text-sm text-[var(--muted)]">No unreachable recipients. 🎉</p>
-        </Card>
-      )}
+      <DataTable
+        columns={columns}
+        rows={rows ?? []}
+        rowKey={(r) => r.id}
+        className="max-h-[calc(100vh-15rem)]"
+        empty="No unreachable recipients. 🎉"
+      />
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        hrefFor={(p) => buildQuery(BASE, { stage: sp.stage, q: sp.q, page: p })}
+      />
     </div>
   );
 }

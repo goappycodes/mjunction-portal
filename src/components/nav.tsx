@@ -10,6 +10,9 @@ import {
   Users,
   LogOut,
   PhoneCall,
+  Upload,
+  ClipboardList,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@/lib/database.types';
@@ -33,6 +36,14 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
+    ],
+  },
+  {
+    heading: 'Operations',
+    items: [
+      { href: '/import', label: 'Import', icon: Upload, adminOnly: true },
+      { href: '/recipients', label: 'Recipients', icon: ClipboardList },
+      { href: '/voc', label: 'VOC & Reports', icon: FileText },
     ],
   },
   {
@@ -68,7 +79,7 @@ export function Nav({
 
   return (
     <aside
-      className="sidebar-scroll flex w-64 shrink-0 flex-col overflow-y-auto"
+      className="sidebar-scroll sticky top-0 flex h-screen w-64 shrink-0 flex-col self-start overflow-y-auto"
       style={{ background: 'var(--sidebar-bg)', color: 'var(--sidebar-fg)' }}
     >
       {/* Brand */}

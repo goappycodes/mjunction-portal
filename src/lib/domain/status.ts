@@ -35,9 +35,6 @@ export function canTransition(from: RecipientStatus, to: RecipientStatus): boole
   return STATUS_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
-/** Terminal statuses that require no further calling action. */
-export const TERMINAL_STATUSES: RecipientStatus[] = ['closed'];
-
 /** Statuses eligible for an order-confirmation (mock) call batch. */
 export const ORDER_CALLABLE: RecipientStatus[] = [
   'imported',

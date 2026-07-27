@@ -28,11 +28,33 @@ export default async function CampaignLayout({
         >
           ← Campaigns
         </Link>
-        <div className="mt-1 flex items-center gap-3">
+        <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">{campaign.calling_from}</h1>
           {campaign.order_reference && (
             <Badge color="indigo">{campaign.order_reference}</Badge>
           )}
+          <div className="ml-auto flex flex-wrap items-center gap-2 text-sm">
+            {user.role === 'admin' && (
+              <Link
+                href={`/import?campaign=${campaignId}`}
+                className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--muted-surface)]"
+              >
+                Import
+              </Link>
+            )}
+            <Link
+              href={`/recipients?campaign=${campaignId}`}
+              className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--muted-surface)]"
+            >
+              Recipients
+            </Link>
+            <Link
+              href={`/voc?campaign=${campaignId}`}
+              className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--muted-surface)]"
+            >
+              VOC &amp; Reports
+            </Link>
+          </div>
         </div>
       </div>
       <CampaignTabs campaignId={campaignId} isAdmin={user.role === 'admin'} />

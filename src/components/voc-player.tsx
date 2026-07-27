@@ -21,7 +21,6 @@ export function VocPlayer({ vocId }: { vocId: string }) {
   if (url) {
     return (
       <div className="flex items-center gap-2">
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <audio controls src={url} className="h-8 max-w-[220px]" />
         <a href={url} download className="text-xs text-[var(--primary)] hover:underline">
           Download

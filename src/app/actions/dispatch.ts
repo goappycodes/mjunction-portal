@@ -1,6 +1,5 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -64,8 +63,9 @@ export async function saveDispatch(input: {
     payload: { stage: 'dispatched', courier: parsed.data.courier_name },
   });
 
-  revalidatePath(`/campaigns/${r.campaign_id}/dispatch`);
-  revalidatePath(`/recipients/${r.id}`);
+  // No revalidatePath here: the caller patches just the affected row client-side
+  // for an instant, flicker-free update. Both /recipients and the detail page
+  // are force-dynamic, so they refetch fresh on the next navigation anyway.
   return { ok: true };
 }
 
@@ -117,7 +117,6 @@ export async function markDelivered(input: {
     actorType: 'system',
   });
 
-  revalidatePath(`/campaigns/${r.campaign_id}/dispatch`);
-  revalidatePath(`/recipients/${r.id}`);
+  // See saveDispatch: the row is patched client-side; no full re-render.
   return { ok: true };
 }

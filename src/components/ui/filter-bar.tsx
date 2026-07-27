@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 
 /**
  * A styled GET-form filter bar used across list pages. Server-component
@@ -28,14 +28,11 @@ export function FilterBar({
     >
       {children}
       <div className="ml-auto flex items-end gap-2">
-        <Button type="submit" variant="secondary" size="sm">
+        <Button type="submit" variant="primary" size="sm">
           Apply filters
         </Button>
         {resetHref && (
-          <a
-            href={resetHref}
-            className="inline-flex h-8 items-center rounded-lg px-3 text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)]"
-          >
+          <a href={resetHref} className={buttonVariants({ variant: 'warning', size: 'sm' })}>
             Reset
           </a>
         )}
