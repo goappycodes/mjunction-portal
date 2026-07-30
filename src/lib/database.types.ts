@@ -66,6 +66,7 @@ export type Campaign = {
 export type Recipient = {
   id: string;
   campaign_id: string;
+  unique_id: string;
   calling_from: string | null;
   telecaller_name: string | null;
   contact_no: string | null;
@@ -205,6 +206,7 @@ export interface Database {
         Insert: Insert<
           Recipient,
           | DefaultCols
+          | 'unique_id'
           | 'updated_at'
           | 'status'
           | 'missing_address'

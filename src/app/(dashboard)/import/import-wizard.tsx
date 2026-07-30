@@ -121,9 +121,10 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
-            Expected columns: Calling From, Tele Caller name, Contact No, Customer Name,
-            Address, Product Name, and (delivery file only) Product Delivery Date. Phones are
-            normalised to E.164 (India); duplicates within the campaign are flagged.
+            Expected columns: Unique Id (optional — auto-generated if blank), Calling From,
+            Tele Caller name, Contact No, Customer Name, Address, Product Name, and (delivery
+            file only) Product Delivery Date. Phones are normalised to E.164 (India); duplicates
+            within the campaign are flagged.
           </p>
           <input
             type="file"
@@ -153,6 +154,7 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
                 <thead className="sticky top-0 bg-[var(--muted-surface)] text-left text-[var(--muted)]">
                   <tr>
                     <th className="px-3 py-2 font-medium">#</th>
+                    <th className="px-3 py-2 font-medium">Unique Id</th>
                     <th className="px-3 py-2 font-medium">Customer</th>
                     <th className="px-3 py-2 font-medium">Phone (E.164)</th>
                     <th className="px-3 py-2 font-medium">Product</th>
@@ -170,6 +172,9 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
                         }`}
                       >
                         <td className="px-3 py-1.5 text-xs text-[var(--muted)]">{r.rowIndex}</td>
+                        <td className="px-3 py-1.5 font-mono text-xs">
+                          {r.unique_id ?? <span className="text-[var(--muted)]">(auto)</span>}
+                        </td>
                         <td className="px-3 py-1.5">{r.customer_name ?? '—'}</td>
                         <td className="px-3 py-1.5 font-mono text-xs">
                           {r.contact_no_e164 ?? <span className="text-[var(--danger)]">invalid</span>}

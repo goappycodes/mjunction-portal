@@ -43,14 +43,25 @@ export async function commitImport(input: {
     (existing ?? []).map((r) => r.contact_no_e164).filter(Boolean) as string[],
   );
 
+  // A supplied unique_id must be globally unique — collect any that already
+  // exist so we skip them instead of failing the whole batch insert.
+  const providedIds = input.rows.map((r) => r.unique_id).filter(Boolean) as string[];
+  const { data: existingIds } = providedIds.length
+    ? await supabase.from('recipients').select('unique_id').in('unique_id', providedIds)
+    : { data: [] };
+  const seenIds = new Set((existingIds ?? []).map((r) => r.unique_id));
+
   const toInsert: MappedRow[] = [];
   let skippedDuplicates = 0;
   for (const row of input.rows) {
-    if (row.contact_no_e164 && seen.has(row.contact_no_e164)) {
+    const dupPhone = !!row.contact_no_e164 && seen.has(row.contact_no_e164);
+    const dupId = !!row.unique_id && seenIds.has(row.unique_id);
+    if (dupPhone || dupId) {
       skippedDuplicates++;
       continue;
     }
     if (row.contact_no_e164) seen.add(row.contact_no_e164);
+    if (row.unique_id) seenIds.add(row.unique_id);
     toInsert.push(row);
   }
 
@@ -72,6 +83,8 @@ export async function commitImport(input: {
   if (toInsert.length) {
     const rows = toInsert.map((r) => ({
       campaign_id: input.campaignId,
+      // Supplied id wins; omit to let the DB default generate a uuid.
+      ...(r.unique_id ? { unique_id: r.unique_id } : {}),
       calling_from: r.calling_from ?? campaign.calling_from,
       telecaller_name: r.telecaller_name,
       contact_no: r.contact_no,

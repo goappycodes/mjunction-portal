@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getLanguages, langName } from '@/lib/domain/languages';
 import { RecipientsTable, type RecipientRow } from './recipients-table';
 import { CallRunner } from './call-runner';
+import { BulkImport } from './bulk-import';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Pagination } from '@/components/ui/pagination';
 import { TableFilters } from '@/components/ui/table-filters';
@@ -192,7 +193,9 @@ export async function RecipientCallsView({
             ],
           },
         ]}
-      />
+      >
+        {isAdmin ? <BulkImport campaignId={activeCampaignId} /> : null}
+      </TableFilters>
 
       <RecipientsTable rows={rows} showCampaign={allCampaigns} isAdmin={isAdmin} />
 

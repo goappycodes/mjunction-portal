@@ -16,6 +16,11 @@ export const IMPORT_COLUMNS = [
 ] as const;
 
 const HEADER_ALIASES: Record<string, string> = {
+  'unique id': 'unique_id',
+  uniqueid: 'unique_id',
+  unique_id: 'unique_id',
+  id: 'unique_id',
+  'record id': 'unique_id',
   'calling from': 'calling_from',
   'tele caller name': 'telecaller_name',
   'telecaller name': 'telecaller_name',
@@ -34,6 +39,7 @@ const HEADER_ALIASES: Record<string, string> = {
 export type RawRow = Record<string, unknown>;
 
 export interface MappedRow {
+  unique_id: string | null;
   calling_from: string | null;
   telecaller_name: string | null;
   contact_no: string | null;
@@ -94,6 +100,7 @@ export function mapRow(raw: RawRow): MappedRow {
   const mapped = mapHeaders(raw);
   const phone = normalizePhone(str(mapped.contact_no));
   return {
+    unique_id: str(mapped.unique_id),
     calling_from: str(mapped.calling_from),
     telecaller_name: str(mapped.telecaller_name),
     contact_no: phone.raw || str(mapped.contact_no),
