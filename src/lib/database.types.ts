@@ -113,6 +113,8 @@ export type CallAttempt = {
   agent_note: string | null;
   started_at: string | null;
   ended_at: string | null;
+  recording_url: string | null;
+  provider_call_ref: string | null;
   created_at: string;
 }
 
@@ -270,6 +272,8 @@ export interface Database {
           | 'agent_note'
           | 'started_at'
           | 'ended_at'
+          | 'recording_url'
+          | 'provider_call_ref'
         >;
         Update: Update<CallAttempt>;
         Relationships: [
