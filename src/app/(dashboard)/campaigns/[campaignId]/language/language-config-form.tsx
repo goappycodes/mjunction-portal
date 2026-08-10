@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateLanguageConfig } from '@/app/actions/campaigns';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, Input, Label, Select } from '@/components/ui/primitives';
+import { Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/components/ui/primitives';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import type { Campaign, Language, LanguageConfigEntry } from '@/lib/database.types';
 import { Trash2, Plus } from 'lucide-react';
 
@@ -76,17 +77,12 @@ export function LanguageConfigForm({
                   aria-label="DTMF key"
                 />
                 <span className="text-[var(--muted)]">→</span>
-                <Select
+                <SearchableSelect
                   value={row.lang}
-                  onChange={(e) => update(i, { lang: e.target.value })}
+                  onChange={(v) => update(i, { lang: v })}
+                  options={languages.map((l) => ({ value: l.code, label: l.display_name }))}
                   className="w-48"
-                >
-                  {languages.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.display_name}
-                    </option>
-                  ))}
-                </Select>
+                />
                 <Button
                   type="button"
                   variant="ghost"
@@ -107,17 +103,12 @@ export function LanguageConfigForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="default_lang">Default (fallback) language</Label>
-            <Select
+            <SearchableSelect
               id="default_lang"
               value={defaultLang}
-              onChange={(e) => setDefaultLang(e.target.value)}
-            >
-              {languages.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.display_name}
-                </option>
-              ))}
-            </Select>
+              onChange={setDefaultLang}
+              options={languages.map((l) => ({ value: l.code, label: l.display_name }))}
+            />
             <p className="text-xs text-[var(--muted)]">Used after N no-input retries.</p>
           </div>
           <div className="space-y-1.5">

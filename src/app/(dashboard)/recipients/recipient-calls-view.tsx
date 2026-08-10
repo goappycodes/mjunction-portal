@@ -150,33 +150,33 @@ export async function RecipientCallsView({
         key={[activeCampaignId ?? '', sp.status ?? '', sp.telecaller ?? ''].join('|')}
         basePath={BASE}
         searchPlaceholder="Name, phone or product"
-        selects={[
+        searchableSelects={[
           {
             name: 'campaign',
             label: 'Campaign',
+            placeholder: 'All campaigns…',
+            searchPlaceholder: 'Search campaigns…',
+            allLabel: 'All campaigns',
             width: 'w-56',
-            options: [
-              { value: '', label: 'All campaigns' },
-              ...campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
-            ],
+            options: campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
           },
           {
             name: 'status',
             label: 'Status',
+            placeholder: 'All statuses…',
+            searchPlaceholder: 'Search statuses…',
+            allLabel: 'All statuses',
             width: 'w-48',
-            options: [
-              { value: '', label: 'All statuses' },
-              ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
-            ],
+            options: Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
           },
           {
             name: 'telecaller',
             label: 'Telecaller',
+            placeholder: 'Any telecaller…',
+            searchPlaceholder: 'Search telecallers…',
+            allLabel: 'All telecallers',
             width: 'w-48',
-            options: [
-              { value: '', label: 'All telecallers' },
-              ...telecallers.map((t) => ({ value: t, label: t })),
-            ],
+            options: telecallers.map((t) => ({ value: t, label: t })),
           },
         ]}
       />

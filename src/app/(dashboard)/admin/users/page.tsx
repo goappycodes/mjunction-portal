@@ -1,8 +1,9 @@
 import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { NewUserForm, UsersTable } from "./users-client";
-import { Input, Select } from "@/components/ui/primitives";
+import { Input } from "@/components/ui/primitives";
 import { FilterBar, FilterField } from "@/components/ui/filter-bar";
+import { FormSearchableSelect } from "@/components/ui/form-searchable-select";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/page-header";
 import { buildQuery } from "@/lib/utils";
@@ -62,17 +63,27 @@ export default async function UsersPage({
           />
         </FilterField>
         <FilterField label="Role">
-          <Select name="role" defaultValue={sp.role ?? ""} className="w-40">
-            <option value="">All roles</option>
-            <option value="admin">Admin</option>
-            <option value="telecaller">Telecaller</option>
-          </Select>
+          <FormSearchableSelect
+            name="role"
+            defaultValue={sp.role ?? ""}
+            allLabel="All roles"
+            className="w-40"
+            options={[
+              { value: "admin", label: "Admin" },
+              { value: "telecaller", label: "Telecaller" },
+            ]}
+          />
         </FilterField>
         <FilterField label="Sort by">
-          <Select name="sort" defaultValue={sort} className="w-44">
-            <option value="recent">Newest first</option>
-            <option value="name">Name (A–Z)</option>
-          </Select>
+          <FormSearchableSelect
+            name="sort"
+            defaultValue={sort}
+            className="w-44"
+            options={[
+              { value: "recent", label: "Newest first" },
+              { value: "name", label: "Name (A–Z)" },
+            ]}
+          />
         </FilterField>
       </FilterBar>
       <UsersTable users={users ?? []} selfId={admin.id} />

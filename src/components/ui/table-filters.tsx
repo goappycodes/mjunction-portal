@@ -57,7 +57,7 @@ export function TableFilters({
   view,
   searchKey = 'q',
   searchPlaceholder,
-  selects,
+  selects = [],
   textInputs = [],
   searchableSelects = [],
   children,
@@ -66,7 +66,8 @@ export function TableFilters({
   view?: string;
   searchKey?: string;
   searchPlaceholder: string;
-  selects: FilterSelect[];
+  /** Plain native `<select>` filters — prefer `searchableSelects` for anything with more than a few options. */
+  selects?: FilterSelect[];
   /** Additional staged (Apply-triggered) free-text filters, e.g. an exact/partial ID lookup distinct from the live search box. */
   textInputs?: FilterTextInput[];
   /** Staged filters that need a searchable dropdown (large/unbounded option lists), e.g. lookup-by-recipient. */
@@ -180,7 +181,7 @@ export function TableFilters({
           </FilterField>
         ))}
         {searchableSelects.map((s) => (
-          <FilterField key={s.name} label={s.label} className="ml-auto">
+          <FilterField key={s.name} label={s.label}>
             <SearchableSelect
               options={s.options}
               value={values[s.name] ?? ''}
