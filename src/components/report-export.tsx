@@ -7,8 +7,10 @@ import type { CampaignReport } from '@/lib/exports/types';
 
 const HEADERS: Record<keyof CampaignReport['rows'][number], string> = {
   campaign: 'Campaign',
+  recipient_id: 'Recipient ID',
   customer_name: 'Customer Name',
   contact: 'Contact',
+  telecaller: 'Telecaller',
   product: 'Product',
   status: 'Status',
   language: 'Language',

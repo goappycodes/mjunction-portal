@@ -153,6 +153,33 @@ export type RecipientEvent = {
   created_at: string;
 }
 
+/**
+ * One row per recipient — the single source the VOC & Reports page reads
+ * from. Kept up to date by upsertCallRecord() (lib/domain/call-records.ts)
+ * from every mutation site rather than derived on read.
+ */
+export type CallRecord = {
+  id: string;
+  recipient_id: string;
+  campaign_id: string;
+  customer_name: string | null;
+  contact_no_e164: string | null;
+  telecaller_name: string | null;
+  product_name: string | null;
+  status: RecipientStatus;
+  language: string | null;
+  order_confirmed_at: string | null;
+  dispatched_date: string | null;
+  delivered_date: string | null;
+  delivery_confirmed_at: string | null;
+  sealed_voc_id: string | null;
+  voc_recording_id: string | null;
+  dtmf_outcome: string | null;
+  duration_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 type Insert<T, Optional extends keyof T = never> = Omit<T, Optional> &
   Partial<Pick<T, Optional>>;
 type Update<T> = Partial<T>;
@@ -342,6 +369,51 @@ export interface Database {
             columns: ['recipient_id'];
             isOneToOne: false;
             referencedRelation: 'recipients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      call_records: {
+        Row: CallRecord;
+        Insert: Insert<
+          CallRecord,
+          | DefaultCols
+          | 'updated_at'
+          | 'customer_name'
+          | 'contact_no_e164'
+          | 'telecaller_name'
+          | 'product_name'
+          | 'language'
+          | 'order_confirmed_at'
+          | 'dispatched_date'
+          | 'delivered_date'
+          | 'delivery_confirmed_at'
+          | 'sealed_voc_id'
+          | 'voc_recording_id'
+          | 'dtmf_outcome'
+          | 'duration_seconds'
+        >;
+        Update: Update<CallRecord>;
+        Relationships: [
+          {
+            foreignKeyName: 'call_records_recipient_id_fkey';
+            columns: ['recipient_id'];
+            isOneToOne: true;
+            referencedRelation: 'recipients';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'call_records_campaign_id_fkey';
+            columns: ['campaign_id'];
+            isOneToOne: false;
+            referencedRelation: 'campaigns';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'call_records_voc_recording_id_fkey';
+            columns: ['voc_recording_id'];
+            isOneToOne: false;
+            referencedRelation: 'voc_recordings';
             referencedColumns: ['id'];
           },
         ];

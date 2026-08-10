@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logEvent, transitionStatus } from '@/lib/domain/audit';
+import { upsertCallRecord } from '@/lib/domain/call-records';
 
 export type AgentState = { error?: string; ok?: boolean };
 
@@ -72,6 +73,7 @@ export async function resolveOrderEscalation(input: {
     actorType: 'agent',
     actorId: user.id,
   });
+  await upsertCallRecord(supabase, r.id);
 
   revalidatePath(`/recipients/${r.id}`);
   revalidatePath('/queue/escalations');
@@ -125,6 +127,7 @@ export async function resolveDeliveryIssue(input: {
     actorType: 'agent',
     actorId: user.id,
   });
+  await upsertCallRecord(supabase, r.id);
 
   revalidatePath(`/recipients/${r.id}`);
   revalidatePath('/queue/escalations');

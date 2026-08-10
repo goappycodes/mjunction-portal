@@ -10,9 +10,9 @@ export default async function VocReportsPage({
   searchParams: Promise<{
     campaign?: string;
     q?: string;
-    lang?: string;
     status?: string;
-    sort?: string;
+    telecaller?: string;
+    recipientId?: string;
     page?: string;
   }>;
 }) {

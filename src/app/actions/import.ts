@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logEvent } from '@/lib/domain/audit';
+import { upsertCallRecord } from '@/lib/domain/call-records';
 import type { MappedRow } from '@/lib/domain/import';
 
 export interface CommitResult {
@@ -101,6 +102,7 @@ export async function commitImport(input: {
         actorId: user.id,
         payload: { import_batch_id: batch.id, file_name: input.fileName },
       });
+      await upsertCallRecord(supabase, r.id);
     }
   }
 

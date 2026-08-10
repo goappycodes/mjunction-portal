@@ -4,8 +4,9 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { validateRows, type ImportPreview, type MappedRow } from '@/lib/domain/import';
+import { IMPORT_COLUMNS, validateRows, type ImportPreview, type MappedRow } from '@/lib/domain/import';
 import { commitImport } from '@/app/actions/import';
+import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, Badge } from '@/components/ui/primitives';
 
@@ -91,6 +92,22 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
     setParseError(null);
   }
 
+  function downloadTemplate() {
+    const example = [
+      'Acme Rewards',
+      'Priya Sharma',
+      '9876543210',
+      'Rahul Kumar',
+      '221B Baker Street, Mumbai, MH 400001',
+      'Wireless Earbuds',
+      '',
+    ];
+    const wb = XLSX.utils.book_new();
+    const sheet = XLSX.utils.aoa_to_sheet([[...IMPORT_COLUMNS], example]);
+    XLSX.utils.book_append_sheet(wb, sheet, 'Recipients');
+    XLSX.writeFile(wb, 'recipient-import-template.xlsx');
+  }
+
   if (step === 'done' && result) {
     return (
       <Card>
@@ -116,14 +133,18 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
           <CardTitle>Import recipients (Excel / CSV)</CardTitle>
+          <Button type="button" variant="secondary" size="sm" onClick={downloadTemplate}>
+            <Download className="h-4 w-4" /> Download template
+          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
             Expected columns: Calling From, Tele Caller name, Contact No, Customer Name,
             Address, Product Name, and (delivery file only) Product Delivery Date. Phones are
-            normalised to E.164 (India); duplicates within the campaign are flagged.
+            normalised to E.164 (India); duplicates within the campaign are flagged. Not sure
+            about the format? Download the template above and fill it in.
           </p>
           <input
             type="file"

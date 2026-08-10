@@ -14,7 +14,6 @@ import type { RecipientStatus } from '@/lib/database.types';
 
 const PAGE_SIZE = 15;
 const BASE = '/voc';
-const NO_MATCH = '00000000-0000-0000-0000-000000000000';
 
 /** A report row plus the identifiers the on-screen table needs (audio player). */
 type VaultRow = { key: string; vocId: string | null; data: ReportRow };
@@ -22,12 +21,18 @@ type VaultRow = { key: string; vocId: string | null; data: ReportRow };
 const dateCell = 'text-xs text-[var(--muted)]';
 const muted = (v: string) => <span className="text-xs text-[var(--muted)]">{v}</span>;
 
+/**
+ * VOC & Reports reads straight off `call_records` — one row per recipient,
+ * kept current by `upsertCallRecord()` from every mutation site (import,
+ * calls, dispatch, agent actions). No live joins here: what's stored is
+ * what's shown.
+ */
 export async function VaultView({
   campaignId,
   sp,
 }: {
   campaignId?: string;
-  sp: { q?: string; lang?: string; status?: string; sort?: string; page?: string };
+  sp: { q?: string; status?: string; telecaller?: string; recipientId?: string; page?: string };
 }) {
   const supabase = await createClient();
 
@@ -48,78 +53,76 @@ export async function VaultView({
   const activeCampaignId = campaignId && campaignMap.has(campaignId) ? campaignId : undefined;
   const allCampaigns = !activeCampaignId;
 
-  // The recipient list is the spine of the combined view: every recipient
-  // appears and the sealed VOC (if any) enriches the row. With no campaign
-  // selected we show every campaign's recipients.
-  let recipientsQuery = supabase
-    .from('recipients')
-    .select('id, campaign_id, customer_name, contact_no_e164, product_name, status, preferred_language');
-  if (activeCampaignId) recipientsQuery = recipientsQuery.eq('campaign_id', activeCampaignId);
-  if (sp.lang) recipientsQuery = recipientsQuery.eq('preferred_language', sp.lang);
+  let recordsQuery = supabase.from('call_records').select('*');
+  if (activeCampaignId) recordsQuery = recordsQuery.eq('campaign_id', activeCampaignId);
   if (sp.status && sp.status in STATUS_LABELS) {
-    recipientsQuery = recipientsQuery.eq('status', sp.status as RecipientStatus);
+    recordsQuery = recordsQuery.eq('status', sp.status as RecipientStatus);
   }
+  if (sp.telecaller) recordsQuery = recordsQuery.eq('telecaller_name', sp.telecaller);
 
-  const sort = sp.sort ?? 'recent';
-  const { data: recipients } = await (sort === 'name'
-    ? recipientsQuery.order('customer_name', { ascending: true })
-    : recipientsQuery.order('updated_at', { ascending: false }));
-  const recipientIds = (recipients ?? []).map((r) => r.id);
-  const idFilter = recipientIds.length ? recipientIds : [NO_MATCH];
+  // Telecaller options are scoped to the active campaign (telecaller names
+  // come from the per-campaign import file) but independent of the other
+  // filters, same treatment as the campaign/status option lists.
+  let telecallerQuery = supabase
+    .from('call_records')
+    .select('telecaller_name')
+    .not('telecaller_name', 'is', null);
+  if (activeCampaignId) telecallerQuery = telecallerQuery.eq('campaign_id', activeCampaignId);
 
-  let dispatchesQuery = supabase
-    .from('dispatches')
-    .select('recipient_id, dispatch_date, delivered_date');
-  if (activeCampaignId) dispatchesQuery = dispatchesQuery.in('recipient_id', idFilter);
+  // Recipient ID dropdown options — same campaign-scoped, other-filters-
+  // independent treatment. Labelled by name + contact so it's searchable by
+  // more than just the raw id.
+  let recipientOptionsQuery = supabase
+    .from('call_records')
+    .select('recipient_id, customer_name, contact_no_e164');
+  if (activeCampaignId) recipientOptionsQuery = recipientOptionsQuery.eq('campaign_id', activeCampaignId);
 
-  let vocsQuery = supabase
-    .from('voc_recordings')
-    .select('id, recipient_id, sealed_voc_id, created_at, dtmf_outcome, duration_seconds');
-  if (activeCampaignId) vocsQuery = vocsQuery.eq('campaign_id', activeCampaignId);
+  const [{ data: records }, allLanguages, { data: telecallerRows }, { data: recipientOptionRows }] =
+    await Promise.all([
+      recordsQuery.order('updated_at', { ascending: false }),
+      getLanguages(supabase),
+      telecallerQuery,
+      recipientOptionsQuery,
+    ]);
 
-  let orderCallsQuery = supabase
-    .from('call_attempts')
-    .select('recipient_id, ended_at')
-    .eq('call_type', 'order_confirmation')
-    .eq('outcome', 'confirmed');
-  if (activeCampaignId) orderCallsQuery = orderCallsQuery.eq('campaign_id', activeCampaignId);
+  const telecallers = Array.from(
+    new Set((telecallerRows ?? []).map((r) => r.telecaller_name).filter((v): v is string => !!v)),
+  ).sort();
 
-  const [{ data: dispatches }, { data: vocs }, { data: orderCalls }, allLanguages] =
-    await Promise.all([dispatchesQuery, vocsQuery, orderCallsQuery, getLanguages(supabase)]);
+  // Labelled by the unique recipient id itself (never ambiguous, unlike
+  // customer name) — name/contact are searchable context in the `sub` line.
+  const recipientOptions = (recipientOptionRows ?? [])
+    .map((r) => ({
+      value: r.recipient_id,
+      label: r.recipient_id,
+      sub: [r.customer_name, r.contact_no_e164].filter(Boolean).join(' · '),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   const langMap: Record<string, string> = {};
   for (const l of allLanguages) langMap[l.code] = l.display_name;
 
-  const dispatchMap = new Map((dispatches ?? []).map((d) => [d.recipient_id, d]));
-  const vocMap = new Map((vocs ?? []).map((v) => [v.recipient_id, v]));
-  const orderMap = new Map<string, string>();
-  for (const c of orderCalls ?? []) {
-    if (c.ended_at && !orderMap.has(c.recipient_id)) orderMap.set(c.recipient_id, c.ended_at);
-  }
-
-  let rows: VaultRow[] = (recipients ?? []).map((r) => {
-    const d = dispatchMap.get(r.id);
-    const v = vocMap.get(r.id);
-    return {
-      key: r.id,
-      vocId: v?.id ?? null,
-      data: {
-        campaign: campaignMap.get(r.campaign_id)?.calling_from ?? '—',
-        customer_name: r.customer_name ?? '',
-        contact: r.contact_no_e164 ?? '',
-        product: r.product_name ?? '',
-        status: statusLabel(r.status),
-        language: langName(langMap, r.preferred_language),
-        order_confirmed: formatDate(orderMap.get(r.id) ?? null),
-        dispatched: formatDate(d?.dispatch_date ?? null),
-        delivered: formatDate(d?.delivered_date ?? null),
-        delivery_confirmed: v ? formatDate(v.created_at) : '—',
-        sealed_voc_id: v?.sealed_voc_id ?? '—',
-        dtmf: v?.dtmf_outcome ?? '—',
-        duration: v ? `${v.duration_seconds ?? 0}s` : '—',
-      },
-    };
-  });
+  let rows: VaultRow[] = (records ?? []).map((r) => ({
+    key: r.recipient_id,
+    vocId: r.voc_recording_id,
+    data: {
+      campaign: campaignMap.get(r.campaign_id)?.calling_from ?? '—',
+      recipient_id: r.recipient_id,
+      customer_name: r.customer_name ?? '',
+      contact: r.contact_no_e164 ?? '',
+      telecaller: r.telecaller_name ?? '—',
+      product: r.product_name ?? '',
+      status: statusLabel(r.status),
+      language: langName(langMap, r.language),
+      order_confirmed: formatDate(r.order_confirmed_at),
+      dispatched: formatDate(r.dispatched_date),
+      delivered: formatDate(r.delivered_date),
+      delivery_confirmed: formatDate(r.delivery_confirmed_at),
+      sealed_voc_id: r.sealed_voc_id ?? '—',
+      dtmf: r.dtmf_outcome ?? '—',
+      duration: r.voc_recording_id ? `${r.duration_seconds ?? 0}s` : '—',
+    },
+  }));
 
   // Free-text search spans name, contact, product and sealed VOC id so the
   // vault's old "search by sealed VOC id" behaviour survives the merge.
@@ -130,6 +133,12 @@ export async function VaultView({
         f.toLowerCase().includes(needle),
       ),
     );
+  }
+
+  // Dedicated Recipient ID lookup — separate from the general search box,
+  // picked from the searchable dropdown below (so this is always an exact id).
+  if (sp.recipientId) {
+    rows = rows.filter((r) => r.data.recipient_id === sp.recipientId);
   }
 
   const selectedCampaign = activeCampaignId ? campaignMap.get(activeCampaignId) : undefined;
@@ -161,6 +170,12 @@ export async function VaultView({
         </>
       ),
     },
+    {
+      header: 'Recipient ID',
+      className: 'font-mono text-xs text-[var(--muted)]',
+      cell: (r) => r.data.recipient_id,
+    },
+    { header: 'Telecaller', cell: (r) => r.data.telecaller },
     { header: 'Product', cell: (r) => r.data.product || '—' },
     { header: 'Status', cell: (r) => r.data.status },
     { header: 'Language', cell: (r) => r.data.language },
@@ -184,9 +199,20 @@ export async function VaultView({
   return (
     <div className="space-y-4">
       <TableFilters
-        key={[activeCampaignId ?? '', sp.lang ?? '', sp.status ?? ''].join('|')}
+        key={[activeCampaignId ?? '', sp.status ?? '', sp.telecaller ?? '', sp.recipientId ?? ''].join('|')}
         basePath={BASE}
         searchPlaceholder="Search by name, contact, product or sealed VOC id"
+        searchableSelects={[
+          {
+            name: 'recipientId',
+            label: 'Recipient ID',
+            placeholder: 'Any recipient…',
+            searchPlaceholder: 'Search by name, contact or ID…',
+            allLabel: 'Any recipient',
+            width: 'w-64',
+            options: recipientOptions,
+          },
+        ]}
         selects={[
           {
             name: 'campaign',
@@ -195,17 +221,6 @@ export async function VaultView({
             options: [
               { value: '', label: 'All campaigns' },
               ...campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
-            ],
-          },
-          {
-            name: 'lang',
-            label: 'Language',
-            width: 'w-40',
-            options: [
-              { value: '', label: 'All languages' },
-              ...allLanguages
-                .filter((l) => l.is_active)
-                .map((l) => ({ value: l.code, label: l.display_name })),
             ],
           },
           {
@@ -218,12 +233,12 @@ export async function VaultView({
             ],
           },
           {
-            name: 'sort',
-            label: 'Sort by',
-            width: 'w-44',
+            name: 'telecaller',
+            label: 'Telecaller',
+            width: 'w-48',
             options: [
-              { value: 'recent', label: 'Newest first' },
-              { value: 'name', label: 'Name (A–Z)' },
+              { value: '', label: 'All telecallers' },
+              ...telecallers.map((t) => ({ value: t, label: t })),
             ],
           },
         ]}
@@ -235,7 +250,7 @@ export async function VaultView({
         columns={columns}
         rows={pageRows}
         rowKey={(r) => r.key}
-        minWidth="min-w-[1100px]"
+        minWidth="min-w-[1300px]"
         className="max-h-[calc(100vh-15rem)]"
         empty="No recipients match these filters."
       />
@@ -248,9 +263,9 @@ export async function VaultView({
           buildQuery(BASE, {
             campaign: activeCampaignId,
             q: sp.q,
-            lang: sp.lang,
             status: sp.status,
-            sort: sp.sort,
+            telecaller: sp.telecaller,
+            recipientId: sp.recipientId,
             page: p,
           })
         }
