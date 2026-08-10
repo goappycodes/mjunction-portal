@@ -1,9 +1,12 @@
 'use server';
 
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logEvent, transitionStatus } from '@/lib/domain/audit';
+import { upsertCallRecord } from '@/lib/domain/call-records';
+import type { ValidatedDeliveryRow } from '@/lib/domain/bulk-delivery';
 
 const dispatchSchema = z.object({
   recipientId: z.string().uuid(),
@@ -62,6 +65,7 @@ export async function saveDispatch(input: {
     actorId: user.id,
     payload: { stage: 'dispatched', courier: parsed.data.courier_name },
   });
+  await upsertCallRecord(supabase, r.id);
 
   // No revalidatePath here: the caller patches just the affected row client-side
   // for an instant, flicker-free update. Both /recipients and the detail page
@@ -116,7 +120,104 @@ export async function markDelivered(input: {
     to: 'delivery_confirm_pending',
     actorType: 'system',
   });
+  await upsertCallRecord(supabase, r.id);
 
   // See saveDispatch: the row is patched client-side; no full re-render.
   return { ok: true };
+}
+
+export type DeliveryMatch = 'matched' | 'not_dispatched' | 'not_found' | 'skipped_status' | 'format_error';
+
+export interface BulkDeliveryRowResult extends ValidatedDeliveryRow {
+  match: DeliveryMatch;
+  recipientId?: string;
+  customerName?: string | null;
+}
+
+export interface BulkDeliveryPreview {
+  error?: string;
+  rows: BulkDeliveryRowResult[];
+  counts: Record<DeliveryMatch, number>;
+}
+
+/**
+ * Match each format-validated row (from lib/domain/bulk-delivery.ts) to a
+ * dispatched recipient in the given campaign by phone number. Read-only —
+ * used to render the preview table before the admin commits.
+ */
+export async function previewBulkDelivery(input: {
+  campaignId: string;
+  rows: ValidatedDeliveryRow[];
+}): Promise<BulkDeliveryPreview> {
+  await requireAdmin();
+  const supabase = await createClient();
+
+  const phones = Array.from(
+    new Set(input.rows.map((r) => r.contact_no_e164).filter((v): v is string => !!v)),
+  );
+  const { data: recipients } = phones.length
+    ? await supabase
+        .from('recipients')
+        .select('id, status, customer_name, contact_no_e164')
+        .eq('campaign_id', input.campaignId)
+        .in('contact_no_e164', phones)
+    : { data: [] };
+  const byPhone = new Map((recipients ?? []).map((r) => [r.contact_no_e164, r]));
+
+  const counts: Record<DeliveryMatch, number> = {
+    matched: 0,
+    not_dispatched: 0,
+    not_found: 0,
+    skipped_status: 0,
+    format_error: 0,
+  };
+
+  const rows: BulkDeliveryRowResult[] = input.rows.map((row) => {
+    let match: DeliveryMatch;
+    let recipientId: string | undefined;
+    let customerName: string | null | undefined;
+
+    const recipient = row.contact_no_e164 ? byPhone.get(row.contact_no_e164) : undefined;
+    if (row.errors.length) match = 'format_error';
+    else if (!row.isDelivered) match = 'skipped_status';
+    else if (!recipient) match = 'not_found';
+    else if (recipient.status !== 'dispatched') match = 'not_dispatched';
+    else match = 'matched';
+
+    if (recipient && match !== 'format_error') {
+      recipientId = recipient.id;
+      customerName = recipient.customer_name;
+    }
+
+    counts[match]++;
+    return { ...row, match, recipientId, customerName };
+  });
+
+  return { rows, counts };
+}
+
+export interface BulkDeliveryCommitResult {
+  error?: string;
+  updated: number;
+  skipped: number;
+}
+
+/** Apply markDelivered to every row the preview resolved to a dispatched recipient. */
+export async function bulkMarkDelivered(input: {
+  rows: { recipientId: string; delivered_date: string }[];
+}): Promise<BulkDeliveryCommitResult> {
+  await requireAdmin();
+  if (!input.rows.length) return { updated: 0, skipped: 0 };
+
+  let updated = 0;
+  let skipped = 0;
+  for (const row of input.rows) {
+    const res = await markDelivered({ recipientId: row.recipientId, delivered_date: row.delivered_date });
+    if (res.ok) updated++;
+    else skipped++;
+  }
+
+  revalidatePath('/recipients');
+  revalidatePath('/voc');
+  return { updated, skipped };
 }

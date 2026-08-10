@@ -8,6 +8,7 @@ import type {
 } from '@/lib/database.types';
 import type { PlaceCallResult } from '@/lib/telephony/types';
 import { logEvent, transitionStatus, type ActorType } from './audit';
+import { upsertCallRecord } from './call-records';
 
 type DB = SupabaseClient<Database>;
 
@@ -127,6 +128,8 @@ export async function recordOrderConfirmationCall(
     });
   }
 
+  await upsertCallRecord(db, recipient.id);
+
   return { attemptId: attempt?.id ?? null, outcome: result.outcome, statusTo: to ?? from };
 }
 
@@ -235,6 +238,8 @@ export async function recordDeliveryConfirmationCall(
       payload: { via: 'delivery_confirmation', outcome: result.outcome },
     });
   }
+
+  await upsertCallRecord(db, recipient.id);
 
   return { attemptId: attempt?.id ?? null, outcome: result.outcome, statusTo: to, sealedVoc };
 }

@@ -16,6 +16,7 @@ import type { Campaign, Database, Recipient } from '../../src/lib/database.types
 import { MockTelephonyProvider } from '../../src/lib/telephony/mock-provider';
 import { recordDeliveryConfirmationCall } from '../../src/lib/domain/call-flow';
 import { transitionStatus, logEvent } from '../../src/lib/domain/audit';
+import { upsertCallRecord } from '../../src/lib/domain/call-records';
 
 loadEnv({ path: '.env.local' });
 faker.seed(4242);
@@ -71,6 +72,7 @@ async function dispatchAndDeliver(adminId: string, campaignId: string) {
         await logEvent(db, { recipientId: r.id, eventType: 'dispatch', actorType: 'admin', actorId: adminId, payload: { stage: 'delivered' } });
         await transitionStatus(db, { recipientId: r.id, from: 'delivered', to: 'delivery_confirm_pending', actorType: 'system' });
       }
+      await upsertCallRecord(db, r.id);
     } catch (e) {
       console.warn(`  skip ${r0.id}: ${(e as Error).message}`);
     }

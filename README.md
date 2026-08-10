@@ -28,6 +28,7 @@ and [`docs/PRD_IVR_Language_Selection_and_Provider_Evaluation.md`](docs/PRD_IVR_
    psql "$SUPABASE_DB_URL" -f supabase/migrations/0001_init.sql
    psql "$SUPABASE_DB_URL" -f supabase/migrations/0002_auth_rls.sql
    psql "$SUPABASE_DB_URL" -f supabase/migrations/0003_storage.sql
+   psql "$SUPABASE_DB_URL" -f supabase/migrations/0004_call_records.sql
    ```
 4. Seed demo data (users, 3 campaigns, ~260 recipients, a full mock lifecycle):
    ```bash

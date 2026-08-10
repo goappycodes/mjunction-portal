@@ -1,7 +1,9 @@
 export interface ReportRow {
   campaign: string;
+  recipient_id: string;
   customer_name: string;
   contact: string;
+  telecaller: string;
   product: string;
   status: string;
   language: string;

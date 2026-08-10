@@ -1,6 +1,8 @@
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { ImportWizard } from './import-wizard';
+import { BulkDeliveryWizard } from './bulk-delivery-wizard';
+import { ImportModeTabs, type ImportMode } from './import-mode-tabs';
 import { CampaignSelector, type CampaignOption } from '@/components/campaign-selector';
 import { PageHeader } from '@/components/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -10,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function ImportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campaign?: string }>;
+  searchParams: Promise<{ campaign?: string; mode?: string }>;
 }) {
   const sp = await searchParams;
   await requireAdmin();
@@ -30,22 +32,34 @@ export default async function ImportPage({
 
   const selected =
     sp.campaign && options.some((o) => o.id === sp.campaign) ? sp.campaign : undefined;
+  const mode: ImportMode = sp.mode === 'delivery' ? 'delivery' : 'import';
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Import"
-        description="Import a recipient file (Excel / CSV) into a campaign."
+        description="Import a recipient file, or bulk mark recipients as delivered — both Excel / CSV, both campaign-scoped."
       />
 
-      <CampaignSelector campaigns={options} selectedId={selected} basePath="/import" />
+      <ImportModeTabs mode={mode} campaignId={selected} />
+
+      <CampaignSelector
+        campaigns={options}
+        selectedId={selected}
+        basePath="/import"
+        preserve={{ mode }}
+      />
 
       {selected ? (
-        <ImportWizard key={selected} campaignId={selected} />
+        mode === 'delivery' ? (
+          <BulkDeliveryWizard key={selected} campaignId={selected} />
+        ) : (
+          <ImportWizard key={selected} campaignId={selected} />
+        )
       ) : (
         <EmptyState>
           {options.length
-            ? 'Select a campaign above to import recipients into it.'
+            ? 'Select a campaign above to get started.'
             : 'No campaigns yet. Create a campaign first, then import recipients.'}
         </EmptyState>
       )}
