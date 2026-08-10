@@ -4,7 +4,9 @@ import { useActionState, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUser, setUserRole, type UserActionState } from '@/app/actions/users';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, Input, Label, Select, Badge } from '@/components/ui/primitives';
+import { Card, CardContent, CardHeader, CardTitle, Input, Label, Badge } from '@/components/ui/primitives';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Spinner } from '@/components/ui/spinner';
 import { formatDate } from '@/lib/utils';
@@ -41,10 +43,15 @@ export function NewUserForm() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="role">Role</Label>
-            <Select id="role" name="role" defaultValue="telecaller">
-              <option value="telecaller">Telecaller</option>
-              <option value="admin">Admin</option>
-            </Select>
+            <FormSearchableSelect
+              id="role"
+              name="role"
+              defaultValue="telecaller"
+              options={[
+                { value: 'telecaller', label: 'Telecaller' },
+                { value: 'admin', label: 'Admin' },
+              ]}
+            />
           </div>
           <div className="sm:col-span-2">
             {state.error && <p className="mb-2 text-sm text-[var(--danger)]">{state.error}</p>}
@@ -67,11 +74,15 @@ export function RoleControl({ user, selfId }: { user: Profile; selfId: string })
 
   return (
     <div className="flex items-center gap-2">
-      <Select
+      <SearchableSelect
         value={role}
         disabled={pending || isSelf}
-        onChange={(e) => {
-          const next = e.target.value as UserRole;
+        options={[
+          { value: 'telecaller', label: 'Telecaller' },
+          { value: 'admin', label: 'Admin' },
+        ]}
+        onChange={(v) => {
+          const next = v as UserRole;
           setRole(next);
           start(async () => {
             await setUserRole(user.id, next);
@@ -79,10 +90,7 @@ export function RoleControl({ user, selfId }: { user: Profile; selfId: string })
           });
         }}
         className="h-8 w-32"
-      >
-        <option value="telecaller">Telecaller</option>
-        <option value="admin">Admin</option>
-      </Select>
+      />
       {pending && <Spinner size={14} className="text-[var(--muted)]" />}
     </div>
   );
