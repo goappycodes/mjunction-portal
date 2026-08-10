@@ -11,8 +11,7 @@ export default async function RecipientsHubPage({
     campaign?: string;
     q?: string;
     status?: string;
-    lang?: string;
-    sort?: string;
+    telecaller?: string;
     page?: string;
   }>;
 }) {

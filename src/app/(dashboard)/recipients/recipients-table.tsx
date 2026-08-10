@@ -11,11 +11,9 @@ import {
 } from '@tanstack/react-table';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StatusBadge } from '@/components/status-badge';
-import { Badge } from '@/components/ui/primitives';
-import { CALL_TYPE_LABELS, OUTCOME_LABELS } from '@/lib/domain/labels';
 import { formatDateTime } from '@/lib/utils';
 import { RecipientRowActions } from './recipient-row-actions';
-import type { CallOutcome, CallType, CallerType, Recipient, RecipientStatus } from '@/lib/database.types';
+import type { Recipient, RecipientStatus } from '@/lib/database.types';
 
 /**
  * A recipient enriched with its language name and an aggregate of its call
@@ -27,10 +25,6 @@ export interface RecipientRow extends Recipient {
   campaign_name: string;
   attempts: number;
   last_call_at: string | null;
-  last_call_type: CallType | null;
-  last_caller: CallerType | null;
-  last_dtmf: string | null;
-  last_outcome: CallOutcome | null;
 }
 
 const col = createColumnHelper<RecipientRow>();
@@ -102,31 +96,6 @@ export function RecipientsTable({
       col.accessor('last_call_at', {
         header: 'Last call',
         cell: (c) => muted(c.getValue() ? formatDateTime(c.getValue() as string) : null),
-      }),
-      col.accessor('last_call_type', {
-        header: 'Call type',
-        cell: (c) => {
-          const v = c.getValue();
-          return v ? CALL_TYPE_LABELS[v] : '—';
-        },
-      }),
-      col.accessor('last_caller', {
-        header: 'Caller',
-        cell: (c) => {
-          const v = c.getValue();
-          return v ? <Badge color={v === 'agent' ? 'purple' : 'blue'}>{v}</Badge> : '—';
-        },
-      }),
-      col.accessor('last_dtmf', {
-        header: 'DTMF',
-        cell: (c) => <span className="font-mono text-xs">{c.getValue() ?? '—'}</span>,
-      }),
-      col.accessor('last_outcome', {
-        header: 'Outcome',
-        cell: (c) => {
-          const v = c.getValue();
-          return <span className="text-xs">{v ? OUTCOME_LABELS[v] : '—'}</span>;
-        },
       }),
       col.accessor('updated_at', {
         header: 'Updated',

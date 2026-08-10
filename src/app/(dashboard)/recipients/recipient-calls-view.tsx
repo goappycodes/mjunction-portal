@@ -16,8 +16,8 @@ const NO_MATCH = '00000000-0000-0000-0000-000000000000';
 
 /**
  * Merged Recipients + Calls view. The recipient list is the spine; each row is
- * enriched with an aggregate of that recipient's call attempts (count + latest
- * attempt's type/caller/DTMF/outcome). Duplicate columns are dropped — the
+ * enriched with an aggregate of that recipient's call attempts (count + most
+ * recent attempt's timestamp). Duplicate columns are dropped — the
  * recipient's preferred language is shown, not the per-call language. With no
  * campaign selected, every campaign's recipients are shown with a Campaign
  * column; picking a campaign (via the filter) narrows and enables call batches.
@@ -29,7 +29,7 @@ export async function RecipientCallsView({
 }: {
   campaignId?: string;
   isAdmin: boolean;
-  sp: { status?: string; q?: string; lang?: string; sort?: string; page?: string };
+  sp: { status?: string; q?: string; telecaller?: string; page?: string };
 }) {
   const supabase = await createClient();
 
@@ -50,24 +50,27 @@ export async function RecipientCallsView({
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
-  const sort = sp.sort ?? 'recent';
 
   let query = supabase.from('recipients').select('*', { count: 'exact' });
   if (activeCampaignId) query = query.eq('campaign_id', activeCampaignId);
   if (sp.status && sp.status in STATUS_LABELS) {
     query = query.eq('status', sp.status as RecipientStatus);
   }
-  if (sp.lang) {
-    query =
-      sp.lang === 'unset'
-        ? query.is('preferred_language', null)
-        : query.eq('preferred_language', sp.lang);
-  }
+  if (sp.telecaller) query = query.eq('telecaller_name', sp.telecaller);
   if (sp.q) {
     query = query.or(
       `customer_name.ilike.%${sp.q}%,contact_no.ilike.%${sp.q}%,contact_no_e164.ilike.%${sp.q}%,product_name.ilike.%${sp.q}%`,
     );
   }
+
+  // Telecaller options are scoped to the active campaign (names come from the
+  // per-campaign import file) but independent of the other filters, same
+  // treatment as the campaign/status option lists.
+  let telecallerQuery = supabase
+    .from('recipients')
+    .select('telecaller_name')
+    .not('telecaller_name', 'is', null);
+  if (activeCampaignId) telecallerQuery = telecallerQuery.eq('campaign_id', activeCampaignId);
 
   // Call-batch eligibility counts only matter when a specific campaign is
   // active (a batch runs against one campaign). Run in parallel with the list.
@@ -87,16 +90,16 @@ export async function RecipientCallsView({
         ])
       : Promise.resolve(null);
 
-  const ordered =
-    sort === 'name'
-      ? query.order('customer_name', { ascending: true })
-      : query.order('updated_at', { ascending: false });
-
-  const [{ data: recipients, count }, allLanguages, counts] = await Promise.all([
-    ordered.range(from, to),
+  const [{ data: recipients, count }, allLanguages, counts, { data: telecallerRows }] = await Promise.all([
+    query.order('updated_at', { ascending: false }).range(from, to),
     getLanguages(supabase),
     countsPromise,
+    telecallerQuery,
   ]);
+
+  const telecallers = Array.from(
+    new Set((telecallerRows ?? []).map((r) => r.telecaller_name).filter((v): v is string => !!v)),
+  ).sort();
 
   const langMap: Record<string, string> = {};
   for (const l of allLanguages) langMap[l.code] = l.display_name;
@@ -107,7 +110,7 @@ export async function RecipientCallsView({
   // the first attempt seen per recipient is the latest.
   const { data: calls } = await supabase
     .from('call_attempts')
-    .select('recipient_id, call_type, caller_type, dtmf_response, outcome, created_at')
+    .select('recipient_id, created_at')
     .in('recipient_id', recipientIds.length ? recipientIds : [NO_MATCH])
     .order('created_at', { ascending: false });
 
@@ -127,10 +130,6 @@ export async function RecipientCallsView({
       campaign_name: campaignMap.get(r.campaign_id) ?? '—',
       attempts: agg?.attempts ?? 0,
       last_call_at: agg?.last.created_at ?? null,
-      last_call_type: agg?.last.call_type ?? null,
-      last_caller: agg?.last.caller_type ?? null,
-      last_dtmf: agg?.last.dtmf_response ?? null,
-      last_outcome: agg?.last.outcome ?? null,
     };
   });
 
@@ -148,7 +147,7 @@ export async function RecipientCallsView({
       )}
 
       <TableFilters
-        key={[activeCampaignId ?? '', sp.lang ?? '', sp.status ?? '', sp.sort ?? ''].join('|')}
+        key={[activeCampaignId ?? '', sp.status ?? '', sp.telecaller ?? ''].join('|')}
         basePath={BASE}
         searchPlaceholder="Name, phone or product"
         selects={[
@@ -162,18 +161,6 @@ export async function RecipientCallsView({
             ],
           },
           {
-            name: 'lang',
-            label: 'Language',
-            width: 'w-40',
-            options: [
-              { value: '', label: 'All languages' },
-              { value: 'unset', label: 'Not captured' },
-              ...allLanguages
-                .filter((l) => l.is_active)
-                .map((l) => ({ value: l.code, label: l.display_name })),
-            ],
-          },
-          {
             name: 'status',
             label: 'Status',
             width: 'w-48',
@@ -183,12 +170,12 @@ export async function RecipientCallsView({
             ],
           },
           {
-            name: 'sort',
-            label: 'Sort by',
-            width: 'w-44',
+            name: 'telecaller',
+            label: 'Telecaller',
+            width: 'w-48',
             options: [
-              { value: 'recent', label: 'Newest first' },
-              { value: 'name', label: 'Name (A–Z)' },
+              { value: '', label: 'All telecallers' },
+              ...telecallers.map((t) => ({ value: t, label: t })),
             ],
           },
         ]}
@@ -204,8 +191,7 @@ export async function RecipientCallsView({
             campaign: activeCampaignId,
             status: sp.status,
             q: sp.q,
-            lang: sp.lang,
-            sort: sp.sort,
+            telecaller: sp.telecaller,
             page: p,
           })
         }

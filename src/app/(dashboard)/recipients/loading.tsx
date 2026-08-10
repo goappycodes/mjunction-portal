@@ -11,13 +11,13 @@ export default function RecipientsHubLoading() {
         <Skeleton className="h-9 w-full max-w-sm" />
         <div className="flex flex-wrap gap-3">
           <Skeleton className="h-9 w-56" />
-          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-48" />
           <Skeleton className="h-9 w-48" />
           <Skeleton className="h-9 w-28" />
           <Skeleton className="h-9 w-20" />
         </div>
       </div>
-      <SkeletonTable rows={12} cols={13} />
+      <SkeletonTable rows={12} cols={9} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Input, Select } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
 import { FilterField } from '@/components/ui/filter-bar';
 import { Spinner } from '@/components/ui/spinner';
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
 
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -19,13 +20,34 @@ export interface FilterSelect {
   options: { value: string; label: string }[];
 }
 
+export interface FilterTextInput {
+  name: string;
+  label: string;
+  placeholder?: string;
+  /** Tailwind width class for the input (default `w-48`). */
+  width?: string;
+}
+
+export interface FilterSearchableSelect {
+  name: string;
+  label: string;
+  /** Tailwind width class for the control (default `w-56`). */
+  width?: string;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  /** Label for the "clear" option, e.g. "All recipients". */
+  allLabel: string;
+  options: SearchableSelectOption[];
+}
+
 /**
  * Shared filter panel for the paginated table views (VOC & Reports,
  * Recipients & Calls). Search runs live (debounced) via `router.replace`
  * inside a transition so the table refreshes without a skeleton flash; the
- * selects are staged locally and committed on "Apply"; "Reset" clears every
- * filter. When `view` is set it is preserved so the active section tab stays.
- * `children` render to the right of the search box (e.g. export buttons).
+ * selects and text inputs are staged locally and committed on "Apply";
+ * "Reset" clears every filter. When `view` is set it is preserved so the
+ * active section tab stays. `children` render to the right of the search box
+ * (e.g. export buttons).
  *
  * Callers pass a `key` derived from the committed filter params so the staged
  * state re-seeds from the URL on Back/Forward, Apply and tab switches.
@@ -36,6 +58,8 @@ export function TableFilters({
   searchKey = 'q',
   searchPlaceholder,
   selects,
+  textInputs = [],
+  searchableSelects = [],
   children,
 }: {
   basePath: string;
@@ -43,15 +67,21 @@ export function TableFilters({
   searchKey?: string;
   searchPlaceholder: string;
   selects: FilterSelect[];
+  /** Additional staged (Apply-triggered) free-text filters, e.g. an exact/partial ID lookup distinct from the live search box. */
+  textInputs?: FilterTextInput[];
+  /** Staged filters that need a searchable dropdown (large/unbounded option lists), e.g. lookup-by-recipient. */
+  searchableSelects?: FilterSearchableSelect[];
   children?: ReactNode;
 }) {
   const router = useRouter();
   const params = useSearchParams();
   const [pending, start] = useTransition();
 
+  const allFields = [...selects, ...textInputs, ...searchableSelects];
+
   const [q, setQ] = useState(params.get(searchKey) ?? '');
   const [values, setValues] = useState<Record<string, string>>(() =>
-    Object.fromEntries(selects.map((s) => [s.name, params.get(s.name) ?? ''])),
+    Object.fromEntries(allFields.map((f) => [f.name, params.get(f.name) ?? ''])),
   );
 
   // Track the latest params in a ref (written in an effect, never during
@@ -93,12 +123,14 @@ export function TableFilters({
 
   const applyFilters = () =>
     start(() =>
-      router.push(hrefWith(Object.fromEntries(selects.map((s) => [s.name, values[s.name] || null])))),
+      router.push(
+        hrefWith(Object.fromEntries(allFields.map((f) => [f.name, values[f.name] || null]))),
+      ),
     );
 
   const resetFilters = () => {
     setQ('');
-    setValues(Object.fromEntries(selects.map((s) => [s.name, ''])));
+    setValues(Object.fromEntries(allFields.map((f) => [f.name, ''])));
     start(() => router.push(view ? `${basePath}?view=${view}` : basePath));
   };
 
@@ -122,6 +154,16 @@ export function TableFilters({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
+        {textInputs.map((t) => (
+          <FilterField key={t.name} label={t.label}>
+            <Input
+              value={values[t.name] ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, [t.name]: e.target.value }))}
+              placeholder={t.placeholder}
+              className={t.width ?? 'w-48'}
+            />
+          </FilterField>
+        ))}
         {selects.map((s) => (
           <FilterField key={s.name} label={s.label}>
             <Select
@@ -135,6 +177,19 @@ export function TableFilters({
                 </option>
               ))}
             </Select>
+          </FilterField>
+        ))}
+        {searchableSelects.map((s) => (
+          <FilterField key={s.name} label={s.label} className="ml-auto">
+            <SearchableSelect
+              options={s.options}
+              value={values[s.name] ?? ''}
+              onChange={(v) => setValues((prev) => ({ ...prev, [s.name]: v }))}
+              placeholder={s.placeholder}
+              searchPlaceholder={s.searchPlaceholder}
+              allLabel={s.allLabel}
+              className={s.width ?? 'w-56'}
+            />
           </FilterField>
         ))}
 

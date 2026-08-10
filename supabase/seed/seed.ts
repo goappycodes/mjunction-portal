@@ -20,6 +20,7 @@ import {
   recordDeliveryConfirmationCall,
 } from '../../src/lib/domain/call-flow';
 import { transitionStatus, logEvent } from '../../src/lib/domain/audit';
+import { upsertCallRecord } from '../../src/lib/domain/call-records';
 import { ORDER_CALLABLE } from '../../src/lib/domain/status';
 
 loadEnv({ path: '.env.local' });
@@ -197,6 +198,7 @@ async function createRecipients(
       actorId: adminId,
       payload: { import_batch_id: batch?.id, campaign_id: campaign.id },
     });
+    await upsertCallRecord(db, r.id);
   }
   return data as Recipient[];
 }
@@ -281,6 +283,7 @@ async function resolveSomeEscalations(campaign: Campaign, adminId: string, agent
       actorType: 'agent',
       actorId: agentId,
     });
+    await upsertCallRecord(db, r.id);
   }
 }
 
@@ -316,6 +319,7 @@ async function dispatchAndDeliver(campaign: Campaign, adminId: string) {
         // Auto-enqueue for delivery confirmation.
         await transitionStatus(db, { recipientId: r.id, from: 'delivered', to: 'delivery_confirm_pending', actorType: 'system' });
       }
+      await upsertCallRecord(db, r.id);
     } catch (e) {
       console.warn(`  dispatch skip ${r.id}: ${(e as Error).message}`);
     }

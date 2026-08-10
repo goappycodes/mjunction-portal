@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalizePhone } from './phone';
+import { parseSpreadsheetDate } from './dates';
 
 /**
  * mjunction import columns (base brief Appendix C). Order file has no delivery
@@ -67,19 +68,6 @@ function str(v: unknown): string | null {
   return s.length ? s : null;
 }
 
-/** Excel serial or free-text date -> ISO date (yyyy-mm-dd) or null. */
-function parseDate(v: unknown): string | null {
-  if (v === null || v === undefined || v === '') return null;
-  if (typeof v === 'number') {
-    // Excel serial date (days since 1899-12-30).
-    const ms = Math.round((v - 25569) * 86400 * 1000);
-    const d = new Date(ms);
-    return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-  }
-  const d = new Date(String(v));
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
-}
-
 /** Normalise arbitrary header casing/whitespace to canonical field keys. */
 export function mapHeaders(row: RawRow): RawRow {
   const out: RawRow = {};
@@ -101,7 +89,7 @@ export function mapRow(raw: RawRow): MappedRow {
     customer_name: str(mapped.customer_name),
     address: str(mapped.address),
     product_name: str(mapped.product_name),
-    product_delivery_date: parseDate(mapped.product_delivery_date),
+    product_delivery_date: parseSpreadsheetDate(mapped.product_delivery_date),
   };
 }
 
