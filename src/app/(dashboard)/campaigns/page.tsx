@@ -3,7 +3,7 @@ import { Eye } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
-import { Input, Select, Badge } from '@/components/ui/primitives';
+import { Input, Badge } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { PageHeader } from '@/components/page-header';
@@ -20,7 +20,7 @@ interface CampaignRow extends Campaign {
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const sp = await searchParams;
   const user = await requireUser();
@@ -30,13 +30,7 @@ export default async function CampaignsPage({
   if (sp.q) {
     query = query.or(`calling_from.ilike.%${sp.q}%,order_reference.ilike.%${sp.q}%`);
   }
-  const sort = sp.sort ?? 'recent';
-  query =
-    sort === 'name'
-      ? query.order('calling_from', { ascending: true })
-      : query.order('created_at', { ascending: false });
-
-  const { data: campaigns } = await query;
+  const { data: campaigns } = await query.order('created_at', { ascending: false });
 
   const { data: recips } = await supabase.from('recipients').select('campaign_id, status');
   const totals: Record<string, number> = {};
@@ -107,12 +101,6 @@ export default async function CampaignsPage({
       <FilterBar action="/campaigns" resetHref="/campaigns">
         <FilterField label="Search">
           <Input name="q" defaultValue={sp.q ?? ''} placeholder="Brand or order reference" className="w-64" />
-        </FilterField>
-        <FilterField label="Sort by">
-          <Select name="sort" defaultValue={sort} className="w-44">
-            <option value="recent">Newest first</option>
-            <option value="name">Name (A–Z)</option>
-          </Select>
         </FilterField>
       </FilterBar>
 
