@@ -37,6 +37,8 @@ export default async function CampaignLayout({
             {user.role === 'admin' && (
               <Link
                 href={`/import?campaign=${campaignId}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--muted-surface)]"
               >
                 Import
@@ -44,12 +46,16 @@ export default async function CampaignLayout({
             )}
             <Link
               href={`/recipients?campaign=${campaignId}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--muted-surface)]"
             >
               Recipients
             </Link>
             <Link
               href={`/voc?campaign=${campaignId}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-lg border border-[var(--border)] px-3 py-1.5 font-medium hover:bg-[var(--muted-surface)]"
             >
               VOC &amp; Reports
