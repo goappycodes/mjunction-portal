@@ -21,9 +21,10 @@ interface CampaignRow extends Campaign {
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
   const sp = await searchParams;
+  const sort = sp.sort === "name" ? "name" : "recent";
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -33,9 +34,10 @@ export default async function CampaignsPage({
       `calling_from.ilike.%${sp.q}%,order_reference.ilike.%${sp.q}%`,
     );
   }
-  const { data: campaigns } = await query.order("created_at", {
-    ascending: false,
-  });
+  const { data: campaigns } =
+    sort === "name"
+      ? await query.order("calling_from", { ascending: true })
+      : await query.order("created_at", { ascending: false });
 
   const { data: recips } = await supabase
     .from("recipients")

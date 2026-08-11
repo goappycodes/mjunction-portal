@@ -110,7 +110,7 @@ export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
   }
 
   function downloadTemplate() {
-    const example = ['9876543210', 'Delivered', ''];
+    const example = ['ORD-0001', 'Delivered', ''];
     const wb = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([[...BULK_DELIVERY_COLUMNS], example]);
     XLSX.utils.book_append_sheet(wb, sheet, 'Bulk delivery');
@@ -150,8 +150,8 @@ export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
-            Expected columns: Contact No, Delivery Status, Delivery Date. Rows are matched to
-            recipients in this campaign by phone number — only rows whose status reads
+            Expected columns: Unique Order ID, Delivery Status, Delivery Date. Rows are matched
+            to recipients in this campaign by Unique Order ID — only rows whose status reads
             &ldquo;Delivered&rdquo; and whose recipient is currently dispatched get applied.
           </p>
           <input
@@ -187,7 +187,7 @@ export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
                 <thead className="sticky top-0 bg-[var(--muted-surface)] text-left text-[var(--muted)]">
                   <tr>
                     <th className="px-3 py-2 font-medium">#</th>
-                    <th className="px-3 py-2 font-medium">Contact</th>
+                    <th className="px-3 py-2 font-medium">Unique Order ID</th>
                     <th className="px-3 py-2 font-medium">Recipient</th>
                     <th className="px-3 py-2 font-medium">Status (file)</th>
                     <th className="px-3 py-2 font-medium">Delivery date</th>
@@ -202,7 +202,7 @@ export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
                     >
                       <td className="px-3 py-1.5 text-xs text-[var(--muted)]">{r.rowIndex}</td>
                       <td className="px-3 py-1.5 font-mono text-xs">
-                        {r.contact_no_e164 ?? <span className="text-[var(--danger)]">invalid</span>}
+                        {r.unique_id ?? <span className="text-[var(--danger)]">missing</span>}
                       </td>
                       <td className="px-3 py-1.5">{r.customerName ?? '—'}</td>
                       <td className="px-3 py-1.5">{r.delivery_status_raw ?? '—'}</td>

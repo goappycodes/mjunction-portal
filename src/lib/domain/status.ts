@@ -1,9 +1,15 @@
-import type { RecipientStatus } from '@/lib/database.types';
+import type { CallOutcome, RecipientStatus } from '@/lib/database.types';
 
 /**
  * Recipient status machine (TECH_SPEC §6 "Status machine" + PRD pipeline).
  * Encodes allowed transitions. Every transition writes a recipient_events row
  * and updates recipients.status (enforced in Server Actions).
+ *
+ * The IVR engine (separate repo, mjunction-ivr-engine) keeps its own copy of
+ * this table at supabase/functions/_shared/status.ts, since it's a Deno edge
+ * function deployed independently of this Next.js app — there is no shared
+ * package between the two runtimes/repos. The two are verified identical as
+ * of this change; keep them in sync by hand when either one changes.
  */
 export const STATUS_TRANSITIONS: Record<RecipientStatus, RecipientStatus[]> = {
   imported: ['order_confirm_pending'],
@@ -47,3 +53,20 @@ export const DELIVERY_CALLABLE: RecipientStatus[] = [
   'delivery_confirm_pending',
   'delivery_unreachable',
 ];
+
+/**
+ * Order-confirmation call outcome -> resulting status. Mirrors
+ * `orderConfirmationStatusFor` in the IVR engine's `_shared/status.ts` (same
+ * name, same shape, kept in sync by hand — see the module comment above).
+ */
+export function orderConfirmationStatusFor(
+  outcome: CallOutcome,
+  from: RecipientStatus,
+): RecipientStatus {
+  if (outcome === 'confirmed') return 'address_confirmed';
+  if (outcome === 'no_answer' || outcome === 'wrong_number' || outcome === 'not_reachable') {
+    return 'order_unreachable';
+  }
+  // corrected | issue_raised | transferred_to_agent -> stays put.
+  return from;
+}

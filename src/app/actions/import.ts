@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logEvent } from '@/lib/domain/audit';
-import { upsertCallRecord } from '@/lib/domain/call-records';
 import type { MappedRow } from '@/lib/domain/import';
 
 export interface CommitResult {
@@ -38,19 +37,25 @@ export async function commitImport(input: {
   // Authoritative dedupe against existing recipients in this campaign.
   const { data: existing } = await supabase
     .from('recipients')
-    .select('contact_no_e164')
+    .select('contact_no_e164, unique_id')
     .eq('campaign_id', input.campaignId);
   const seen = new Set(
     (existing ?? []).map((r) => r.contact_no_e164).filter(Boolean) as string[],
   );
+  const seenUniqueIds = new Set((existing ?? []).map((r) => r.unique_id).filter(Boolean));
 
   const toInsert: MappedRow[] = [];
   let skippedDuplicates = 0;
   for (const row of input.rows) {
+    if (!row.unique_id || seenUniqueIds.has(row.unique_id)) {
+      skippedDuplicates++;
+      continue;
+    }
     if (row.contact_no_e164 && seen.has(row.contact_no_e164)) {
       skippedDuplicates++;
       continue;
     }
+    seenUniqueIds.add(row.unique_id);
     if (row.contact_no_e164) seen.add(row.contact_no_e164);
     toInsert.push(row);
   }
@@ -73,6 +78,7 @@ export async function commitImport(input: {
   if (toInsert.length) {
     const rows = toInsert.map((r) => ({
       campaign_id: input.campaignId,
+      unique_id: r.unique_id as string,
       calling_from: r.calling_from ?? campaign.calling_from,
       telecaller_name: r.telecaller_name,
       contact_no: r.contact_no,
@@ -102,7 +108,6 @@ export async function commitImport(input: {
         actorId: user.id,
         payload: { import_batch_id: batch.id, file_name: input.fileName },
       });
-      await upsertCallRecord(supabase, r.id);
     }
   }
 

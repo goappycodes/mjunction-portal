@@ -64,3 +64,51 @@ export function statusLabel(s: RecipientStatus): string {
 export function statusColor(s: RecipientStatus): BadgeColor {
   return STATUS_COLORS[s] ?? 'slate';
 }
+
+/** Title-cases a raw provider status string, e.g. "no-answer" -> "No answer". */
+function formatProviderStatus(status: string): string {
+  return status.replace(/[-_]+/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+}
+
+const PROVIDER_STATUS_COLORS: Record<string, BadgeColor> = {
+  completed: 'green',
+  queued: 'amber',
+  ringing: 'amber',
+  'in-progress': 'amber',
+  busy: 'red',
+  failed: 'red',
+  'no-answer': 'red',
+  canceled: 'red',
+  cancelled: 'red',
+};
+
+/**
+ * The call log's single "Status" column: the business outcome once known
+ * (e.g. "Confirmed"), falling back to Exotel's raw telephony status while
+ * the call is still in flight and has none yet (e.g. "Queued").
+ */
+export function callStatusLabel(
+  outcome: CallOutcome | null,
+  providerStatus: string | null,
+): string {
+  if (outcome) return OUTCOME_LABELS[outcome];
+  if (providerStatus) return formatProviderStatus(providerStatus);
+  return '—';
+}
+
+export function callStatusColor(
+  outcome: CallOutcome | null,
+  providerStatus: string | null,
+): BadgeColor {
+  if (outcome) {
+    return outcome === 'confirmed'
+      ? 'green'
+      : outcome === 'transferred_to_agent'
+        ? 'blue'
+        : outcome === 'corrected'
+          ? 'indigo'
+          : 'red';
+  }
+  if (providerStatus) return PROVIDER_STATUS_COLORS[providerStatus.toLowerCase()] ?? 'slate';
+  return 'slate';
+}

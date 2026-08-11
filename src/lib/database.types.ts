@@ -66,6 +66,8 @@ export type Campaign = {
 export type Recipient = {
   id: string;
   campaign_id: string;
+  /** Importer-provided order id — one recipient IS one order. External/customer-facing key. */
+  unique_id: string;
   calling_from: string | null;
   telecaller_name: string | null;
   contact_no: string | null;
@@ -115,6 +117,8 @@ export type CallAttempt = {
   ended_at: string | null;
   recording_url: string | null;
   provider_call_ref: string | null;
+  /** Raw provider telephony status (queued/ringing/completed/no-answer/busy/failed/...), distinct from the business `outcome`. */
+  provider_status: string | null;
   created_at: string;
 }
 
@@ -153,33 +157,6 @@ export type RecipientEvent = {
   actor_id: string | null;
   payload: Record<string, unknown>;
   created_at: string;
-}
-
-/**
- * One row per recipient — the single source the VOC & Reports page reads
- * from. Kept up to date by upsertCallRecord() (lib/domain/call-records.ts)
- * from every mutation site rather than derived on read.
- */
-export type CallRecord = {
-  id: string;
-  recipient_id: string;
-  campaign_id: string;
-  customer_name: string | null;
-  contact_no_e164: string | null;
-  telecaller_name: string | null;
-  product_name: string | null;
-  status: RecipientStatus;
-  language: string | null;
-  order_confirmed_at: string | null;
-  dispatched_date: string | null;
-  delivered_date: string | null;
-  delivery_confirmed_at: string | null;
-  sealed_voc_id: string | null;
-  voc_recording_id: string | null;
-  dtmf_outcome: string | null;
-  duration_seconds: number | null;
-  created_at: string;
-  updated_at: string;
 }
 
 type Insert<T, Optional extends keyof T = never> = Omit<T, Optional> &
@@ -250,7 +227,7 @@ export interface Database {
           | 'language_source'
           | 'dedupe_key'
           | 'import_batch_id'
-        >;
+        >; // unique_id is required on insert — no DB default, must come from the import row.
         Update: Update<Recipient>;
         Relationships: [
           {
@@ -301,6 +278,7 @@ export interface Database {
           | 'ended_at'
           | 'recording_url'
           | 'provider_call_ref'
+          | 'provider_status'
         >;
         Update: Update<CallAttempt>;
         Relationships: [
@@ -361,6 +339,13 @@ export interface Database {
             referencedRelation: 'campaigns';
             referencedColumns: ['id'];
           },
+          {
+            foreignKeyName: 'voc_recordings_call_attempt_id_fkey';
+            columns: ['call_attempt_id'];
+            isOneToOne: false;
+            referencedRelation: 'call_attempts';
+            referencedColumns: ['id'];
+          },
         ];
       };
       recipient_events: {
@@ -373,51 +358,6 @@ export interface Database {
             columns: ['recipient_id'];
             isOneToOne: false;
             referencedRelation: 'recipients';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      call_records: {
-        Row: CallRecord;
-        Insert: Insert<
-          CallRecord,
-          | DefaultCols
-          | 'updated_at'
-          | 'customer_name'
-          | 'contact_no_e164'
-          | 'telecaller_name'
-          | 'product_name'
-          | 'language'
-          | 'order_confirmed_at'
-          | 'dispatched_date'
-          | 'delivered_date'
-          | 'delivery_confirmed_at'
-          | 'sealed_voc_id'
-          | 'voc_recording_id'
-          | 'dtmf_outcome'
-          | 'duration_seconds'
-        >;
-        Update: Update<CallRecord>;
-        Relationships: [
-          {
-            foreignKeyName: 'call_records_recipient_id_fkey';
-            columns: ['recipient_id'];
-            isOneToOne: true;
-            referencedRelation: 'recipients';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'call_records_campaign_id_fkey';
-            columns: ['campaign_id'];
-            isOneToOne: false;
-            referencedRelation: 'campaigns';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'call_records_voc_recording_id_fkey';
-            columns: ['voc_recording_id'];
-            isOneToOne: false;
-            referencedRelation: 'voc_recordings';
             referencedColumns: ['id'];
           },
         ];

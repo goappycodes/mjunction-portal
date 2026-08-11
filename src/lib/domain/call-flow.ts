@@ -8,7 +8,7 @@ import type {
 } from '@/lib/database.types';
 import type { PlaceCallResult } from '@/lib/telephony/types';
 import { logEvent, transitionStatus, type ActorType } from './audit';
-import { upsertCallRecord } from './call-records';
+import { orderConfirmationStatusFor } from './status';
 
 type DB = SupabaseClient<Database>;
 
@@ -110,14 +110,9 @@ export async function recordOrderConfirmationCall(
     },
   });
 
-  // Map outcome -> status.
-  let to: RecipientStatus | null = null;
-  if (result.outcome === 'confirmed') to = 'address_confirmed';
-  else if (result.outcome === 'no_answer' || result.outcome === 'wrong_number' || result.outcome === 'not_reachable')
-    to = 'order_unreachable';
-  // transferred_to_agent -> stays pending (surfaces in escalations queue).
+  const to = orderConfirmationStatusFor(result.outcome, from);
 
-  if (to && to !== from) {
+  if (to !== from) {
     await transitionStatus(db, {
       recipientId: recipient.id,
       from,
@@ -128,9 +123,7 @@ export async function recordOrderConfirmationCall(
     });
   }
 
-  await upsertCallRecord(db, recipient.id);
-
-  return { attemptId: attempt?.id ?? null, outcome: result.outcome, statusTo: to ?? from };
+  return { attemptId: attempt?.id ?? null, outcome: result.outcome, statusTo: to };
 }
 
 /**
@@ -238,8 +231,6 @@ export async function recordDeliveryConfirmationCall(
       payload: { via: 'delivery_confirmation', outcome: result.outcome },
     });
   }
-
-  await upsertCallRecord(db, recipient.id);
 
   return { attemptId: attempt?.id ?? null, outcome: result.outcome, statusTo: to, sealedVoc };
 }
