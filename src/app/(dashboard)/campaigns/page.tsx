@@ -22,7 +22,7 @@ interface CampaignRow extends Campaign {
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const sp = await searchParams;
   const user = await requireUser();
@@ -32,13 +32,7 @@ export default async function CampaignsPage({
   if (sp.q) {
     query = query.or(`calling_from.ilike.%${sp.q}%,order_reference.ilike.%${sp.q}%`);
   }
-  const sort = sp.sort ?? 'recent';
-  query =
-    sort === 'name'
-      ? query.order('calling_from', { ascending: true })
-      : query.order('created_at', { ascending: false });
-
-  const { data: campaigns } = await query;
+  const { data: campaigns } = await query.order('created_at', { ascending: false });
 
   const { data: recips } = await supabase.from('recipients').select('campaign_id, status');
   const totals: Record<string, number> = {};
@@ -122,7 +116,6 @@ export default async function CampaignsPage({
           />
         </FilterField>
       </FilterBar>
-
       <DataTable
         columns={columns}
         rows={rows}
