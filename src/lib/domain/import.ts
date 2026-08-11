@@ -7,6 +7,7 @@ import { parseSpreadsheetDate } from './dates';
  * date; the delivery file adds "Product Delivery Date".
  */
 export const IMPORT_COLUMNS = [
+  'Unique Order ID',
   'Calling From',
   'Tele Caller name',
   'Contact No',
@@ -17,6 +18,10 @@ export const IMPORT_COLUMNS = [
 ] as const;
 
 const HEADER_ALIASES: Record<string, string> = {
+  'unique order id': 'unique_id',
+  'unique id': 'unique_id',
+  'order id': 'unique_id',
+  'order_id': 'unique_id',
   'calling from': 'calling_from',
   'tele caller name': 'telecaller_name',
   'telecaller name': 'telecaller_name',
@@ -35,6 +40,7 @@ const HEADER_ALIASES: Record<string, string> = {
 export type RawRow = Record<string, unknown>;
 
 export interface MappedRow {
+  unique_id: string | null;
   calling_from: string | null;
   telecaller_name: string | null;
   contact_no: string | null;
@@ -51,6 +57,7 @@ export interface ValidatedRow extends MappedRow {
   missing_product: boolean;
   phone_valid: boolean;
   is_duplicate: boolean;
+  is_duplicate_unique_id: boolean;
   errors: string[];
 }
 
@@ -82,6 +89,7 @@ export function mapRow(raw: RawRow): MappedRow {
   const mapped = mapHeaders(raw);
   const phone = normalizePhone(str(mapped.contact_no));
   return {
+    unique_id: str(mapped.unique_id),
     calling_from: str(mapped.calling_from),
     telecaller_name: str(mapped.telecaller_name),
     contact_no: phone.raw || str(mapped.contact_no),
@@ -94,6 +102,7 @@ export function mapRow(raw: RawRow): MappedRow {
 }
 
 export const rowSchema = z.object({
+  unique_id: z.string().min(1, 'Unique Order ID required'),
   contact_no: z.string().min(1, 'Contact number required'),
   customer_name: z.string().min(1, 'Customer name required'),
 });
@@ -106,8 +115,10 @@ export const rowSchema = z.object({
 export function validateRows(
   rawRows: RawRow[],
   existingE164: Set<string> = new Set(),
+  existingUniqueIds: Set<string> = new Set(),
 ): ImportPreview {
   const seen = new Set<string>(existingE164);
+  const seenUniqueIds = new Set<string>(existingUniqueIds);
   const rows: ValidatedRow[] = [];
   let validCount = 0;
   let errorCount = 0;
@@ -138,6 +149,16 @@ export function validateRows(
       }
     }
 
+    let is_duplicate_unique_id = false;
+    if (mapped.unique_id) {
+      if (seenUniqueIds.has(mapped.unique_id)) {
+        is_duplicate_unique_id = true;
+        errors.push('Duplicate Unique Order ID');
+      } else {
+        seenUniqueIds.add(mapped.unique_id);
+      }
+    }
+
     const hasError = errors.length > 0;
     if (hasError) errorCount++;
     else if (!is_duplicate) validCount++;
@@ -149,6 +170,7 @@ export function validateRows(
       missing_product,
       phone_valid,
       is_duplicate,
+      is_duplicate_unique_id,
       errors,
     });
   });

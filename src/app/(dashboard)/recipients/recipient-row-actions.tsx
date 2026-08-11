@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Truck, PackageCheck, PhoneOutgoing } from 'lucide-react';
 import { saveDispatch, markDelivered } from '@/app/actions/dispatch';
-import { runDeliveryConfirmation } from '@/app/actions/calls';
+import { runDeliveryConfirmation, startOrderConfirmationCall } from '@/app/actions/calls';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/primitives';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -40,6 +40,7 @@ export function RecipientRowActions({
   const canDispatch = status === 'address_confirmed' || status === 'address_corrected';
   const canDeliver = status === 'dispatched';
   const canConfirm = status === 'delivery_confirm_pending' || status === 'delivery_unreachable';
+  const canCallNow = status === 'imported' || status === 'order_confirm_pending';
 
   const [modal, setModal] = useState<null | 'dispatch' | 'deliver'>(null);
   const [pending, start] = useTransition();
@@ -93,12 +94,29 @@ export function RecipientRowActions({
     });
   }
 
-  if (!canDispatch && !canDeliver && !canConfirm) {
+  function callNow() {
+    setError(null);
+    start(async () => {
+      const res = await startOrderConfirmationCall(recipientId);
+      if (res.error) setError(res.error);
+      else if (status === 'imported') onStatusChange(recipientId, 'order_confirm_pending');
+    });
+  }
+
+  if (!canDispatch && !canDeliver && !canConfirm && !canCallNow) {
     return <span className="text-xs text-[var(--muted)]">—</span>;
   }
 
   return (
     <div onClick={(e) => e.stopPropagation()}>
+      {canCallNow && (
+        <div className="flex flex-col gap-1">
+          <Button size="sm" variant="secondary" onClick={callNow} loading={pending}>
+            <PhoneOutgoing className="h-4 w-4" /> Call Now
+          </Button>
+          {error && <span className="text-xs text-[var(--danger)]">{error}</span>}
+        </div>
+      )}
       {canDispatch && (
         <Button size="sm" variant="primary" onClick={() => setModal('dispatch')}>
           <Truck className="h-4 w-4" /> Dispatch

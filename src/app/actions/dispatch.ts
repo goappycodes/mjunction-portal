@@ -5,7 +5,6 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logEvent, transitionStatus } from '@/lib/domain/audit';
-import { upsertCallRecord } from '@/lib/domain/call-records';
 import type { ValidatedDeliveryRow } from '@/lib/domain/bulk-delivery';
 
 const dispatchSchema = z.object({
@@ -65,7 +64,6 @@ export async function saveDispatch(input: {
     actorId: user.id,
     payload: { stage: 'dispatched', courier: parsed.data.courier_name },
   });
-  await upsertCallRecord(supabase, r.id);
 
   // No revalidatePath here: the caller patches just the affected row client-side
   // for an instant, flicker-free update. Both /recipients and the detail page
@@ -120,7 +118,6 @@ export async function markDelivered(input: {
     to: 'delivery_confirm_pending',
     actorType: 'system',
   });
-  await upsertCallRecord(supabase, r.id);
 
   // See saveDispatch: the row is patched client-side; no full re-render.
   return { ok: true };
@@ -142,7 +139,7 @@ export interface BulkDeliveryPreview {
 
 /**
  * Match each format-validated row (from lib/domain/bulk-delivery.ts) to a
- * dispatched recipient in the given campaign by phone number. Read-only —
+ * dispatched recipient in the given campaign by Unique Order ID. Read-only —
  * used to render the preview table before the admin commits.
  */
 export async function previewBulkDelivery(input: {
@@ -152,17 +149,17 @@ export async function previewBulkDelivery(input: {
   await requireAdmin();
   const supabase = await createClient();
 
-  const phones = Array.from(
-    new Set(input.rows.map((r) => r.contact_no_e164).filter((v): v is string => !!v)),
+  const uniqueIds = Array.from(
+    new Set(input.rows.map((r) => r.unique_id).filter((v): v is string => !!v)),
   );
-  const { data: recipients } = phones.length
+  const { data: recipients } = uniqueIds.length
     ? await supabase
         .from('recipients')
-        .select('id, status, customer_name, contact_no_e164')
+        .select('id, status, customer_name, unique_id')
         .eq('campaign_id', input.campaignId)
-        .in('contact_no_e164', phones)
+        .in('unique_id', uniqueIds)
     : { data: [] };
-  const byPhone = new Map((recipients ?? []).map((r) => [r.contact_no_e164, r]));
+  const byUniqueId = new Map((recipients ?? []).map((r) => [r.unique_id, r]));
 
   const counts: Record<DeliveryMatch, number> = {
     matched: 0,
@@ -177,7 +174,7 @@ export async function previewBulkDelivery(input: {
     let recipientId: string | undefined;
     let customerName: string | null | undefined;
 
-    const recipient = row.contact_no_e164 ? byPhone.get(row.contact_no_e164) : undefined;
+    const recipient = row.unique_id ? byUniqueId.get(row.unique_id) : undefined;
     if (row.errors.length) match = 'format_error';
     else if (!row.isDelivered) match = 'skipped_status';
     else if (!recipient) match = 'not_found';

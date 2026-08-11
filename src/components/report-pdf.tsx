@@ -26,10 +26,10 @@ const COLS: { key: keyof CampaignReport['rows'][number]; label: string; wide?: '
   { key: 'customer_name', label: 'Customer', wide: 'name' },
   { key: 'contact', label: 'Contact' },
   { key: 'product', label: 'Product', wide: 'name' },
+  { key: 'attempt_number', label: 'Attempt #' },
   { key: 'status', label: 'Status' },
   { key: 'language', label: 'Lang' },
-  { key: 'delivered', label: 'Delivered' },
-  { key: 'delivery_confirmed', label: 'Confirmed' },
+  { key: 'started_at', label: 'Started' },
   { key: 'sealed_voc_id', label: 'Sealed VOC ID', wide: 'voc' },
   { key: 'dtmf', label: 'DTMF' },
   { key: 'duration', label: 'Duration' },
@@ -41,7 +41,7 @@ export function ReportDoc({ report }: { report: CampaignReport }) {
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Text style={styles.title}>{report.campaignName} — Client Report</Text>
         <Text style={styles.meta}>
-          {report.orderReference} · {report.rows.length} recipients · Generated {report.generatedAt}
+          {report.orderReference} · {report.rows.length} calls · Generated {report.generatedAt}
         </Text>
 
         <View style={styles.headerRow}>

@@ -148,6 +148,45 @@ export default async function RecipientPage({
             </Card>
           )}
 
+          {!!(calls ?? []).length && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Calls</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {(calls ?? []).map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-start justify-between gap-2 border-b border-[var(--border)] pb-2 last:border-0 last:pb-0"
+                  >
+                    <div>
+                      <div className="font-medium">
+                        {CALL_TYPE_LABELS[c.call_type] ?? c.call_type}
+                        <span className="ml-1 text-[var(--muted)]">#{c.attempt_number}</span>
+                      </div>
+                      <div className="text-xs text-[var(--muted)]">
+                        {c.outcome ? OUTCOME_LABELS[c.outcome] ?? c.outcome : 'Pending'}
+                        {c.dtmf_response ? ` · pressed ${c.dtmf_response}` : ''}
+                        {' · '}
+                        {formatDateTime(c.created_at)}
+                      </div>
+                    </div>
+                    {c.recording_url && (
+                      <a
+                        href={c.recording_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-xs font-medium text-[var(--primary)] hover:underline"
+                      >
+                        Recording
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           <RecipientActions
             recipientId={recipient.id}
             status={recipient.status}

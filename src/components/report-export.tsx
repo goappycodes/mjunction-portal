@@ -7,19 +7,18 @@ import type { CampaignReport } from '@/lib/exports/types';
 
 const HEADERS: Record<keyof CampaignReport['rows'][number], string> = {
   campaign: 'Campaign',
-  recipient_id: 'Recipient ID',
+  unique_id: 'Unique Order ID',
   customer_name: 'Customer Name',
   contact: 'Contact',
   telecaller: 'Telecaller',
   product: 'Product',
+  attempt_number: 'Attempt #',
   status: 'Status',
   language: 'Language',
-  order_confirmed: 'Order Confirmed',
-  dispatched: 'Dispatched',
-  delivered: 'Delivered',
-  delivery_confirmed: 'Delivery Confirmed',
-  sealed_voc_id: 'Sealed VOC ID',
   dtmf: 'DTMF',
+  started_at: 'Started',
+  ended_at: 'Ended',
+  sealed_voc_id: 'Sealed VOC ID',
   duration: 'Duration',
 };
 

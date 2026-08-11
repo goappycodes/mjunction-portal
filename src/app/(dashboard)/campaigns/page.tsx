@@ -1,18 +1,17 @@
-import Link from 'next/link';
-import { Eye } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
-import { Button } from '@/components/ui/button';
-import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Card, Input, Select, Badge } from '@/components/ui/primitives';
-import { FilterBar, FilterField } from '@/components/ui/filter-bar';
-import { DataTable, type Column } from '@/components/ui/data-table';
-import { PageHeader } from '@/components/page-header';
-import { formatDate } from '@/lib/utils';
-import type { Campaign } from '@/lib/database.types';
+import Link from "next/link";
+import { Eye } from "lucide-react";
+import { requireUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
+import { Card, Input, Badge } from "@/components/ui/primitives";
+import { FilterBar, FilterField } from "@/components/ui/filter-bar";
+import { FormSearchableSelect } from "@/components/ui/form-searchable-select";
+import { DataTable, type Column } from "@/components/ui/data-table";
+import { PageHeader } from "@/components/page-header";
+import { formatDate } from "@/lib/utils";
+import type { Campaign } from "@/lib/database.types";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 interface CampaignRow extends Campaign {
   recipientCount: number;
@@ -22,24 +21,32 @@ interface CampaignRow extends Campaign {
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
   const sp = await searchParams;
+  const sort = sp.sort === "name" ? "name" : "recent";
   const user = await requireUser();
   const supabase = await createClient();
 
-  let query = supabase.from('campaigns').select('*');
+  let query = supabase.from("campaigns").select("*");
   if (sp.q) {
-    query = query.or(`calling_from.ilike.%${sp.q}%,order_reference.ilike.%${sp.q}%`);
+    query = query.or(
+      `calling_from.ilike.%${sp.q}%,order_reference.ilike.%${sp.q}%`,
+    );
   }
-  const { data: campaigns } = await query.order('created_at', { ascending: false });
+  const { data: campaigns } =
+    sort === "name"
+      ? await query.order("calling_from", { ascending: true })
+      : await query.order("created_at", { ascending: false });
 
-  const { data: recips } = await supabase.from('recipients').select('campaign_id, status');
+  const { data: recips } = await supabase
+    .from("recipients")
+    .select("campaign_id, status");
   const totals: Record<string, number> = {};
   const confirmed: Record<string, number> = {};
   for (const r of recips ?? []) {
     totals[r.campaign_id] = (totals[r.campaign_id] ?? 0) + 1;
-    if (r.status === 'confirmed' || r.status === 'closed')
+    if (r.status === "confirmed" || r.status === "closed")
       confirmed[r.campaign_id] = (confirmed[r.campaign_id] ?? 0) + 1;
   }
 
@@ -51,31 +58,38 @@ export default async function CampaignsPage({
 
   const columns: Column<CampaignRow>[] = [
     {
-      header: 'Campaign',
+      header: "Campaign",
       cell: (c) => (
         <>
           <p className="font-medium">{c.calling_from}</p>
-          <p className="text-xs text-[var(--muted)]">{c.order_reference ?? 'No order reference'}</p>
+          <p className="text-xs text-[var(--muted)]">
+            {c.order_reference ?? "No order reference"}
+          </p>
         </>
       ),
     },
     {
-      header: 'Recipients',
-      className: 'tabular-nums',
+      header: "Recipients",
+      className: "tabular-nums",
       cell: (c) => c.recipientCount,
     },
     {
-      header: 'Sealed VOCs',
-      cell: (c) => (c.vocCount > 0 ? <Badge color="green">{c.vocCount}</Badge> : <span className="text-[var(--muted)]">—</span>),
+      header: "Sealed VOCs",
+      cell: (c) =>
+        c.vocCount > 0 ? (
+          <Badge color="green">{c.vocCount}</Badge>
+        ) : (
+          <span className="text-[var(--muted)]">—</span>
+        ),
     },
     {
-      header: 'Duration',
-      className: 'text-xs text-[var(--muted)]',
+      header: "Duration",
+      className: "text-xs text-[var(--muted)]",
       cell: (c) => `${formatDate(c.start_date)} – ${formatDate(c.end_date)}`,
     },
     {
-      header: '',
-      className: 'text-right',
+      header: "",
+      className: "text-right",
       cell: (c) => (
         <Link href={`/campaigns/${c.id}`}>
           <Button variant="secondary" size="sm">
@@ -92,7 +106,7 @@ export default async function CampaignsPage({
         title="Campaigns"
         description="Brand / order batches and their fulfilment pipeline."
         actions={
-          user.role === 'admin' ? (
+          user.role === "admin" ? (
             <Link href="/campaigns/new">
               <Button>New campaign</Button>
             </Link>
@@ -102,7 +116,12 @@ export default async function CampaignsPage({
 
       <FilterBar action="/campaigns" resetHref="/campaigns">
         <FilterField label="Search">
-          <Input name="q" defaultValue={sp.q ?? ''} placeholder="Brand or order reference" className="w-64" />
+          <Input
+            name="q"
+            defaultValue={sp.q ?? ""}
+            placeholder="Brand or order reference"
+            className="w-64"
+          />
         </FilterField>
         <FilterField label="Sort by">
           <FormSearchableSelect
@@ -110,17 +129,18 @@ export default async function CampaignsPage({
             defaultValue={sort}
             className="w-44"
             options={[
-              { value: 'recent', label: 'Newest first' },
-              { value: 'name', label: 'Name (A–Z)' },
+              { value: "recent", label: "Newest first" },
+              { value: "name", label: "Name (A–Z)" },
             ]}
           />
         </FilterField>
       </FilterBar>
+
       <DataTable
         columns={columns}
         rows={rows}
         rowKey={(c) => c.id}
-        empty={sp.q ? 'No campaigns match your search.' : 'No campaigns yet.'}
+        empty={sp.q ? "No campaigns match your search." : "No campaigns yet."}
       />
     </div>
   );

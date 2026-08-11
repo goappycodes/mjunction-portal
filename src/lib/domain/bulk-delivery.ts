@@ -1,16 +1,16 @@
-import { normalizePhone } from './phone';
 import { parseSpreadsheetDate } from './dates';
 
 /**
  * Bulk "mark as delivered" import columns. A courier/ops delivery feed:
- * one row per shipment, keyed by the recipient's contact number.
+ * one row per shipment, keyed by the recipient's Unique Order ID.
  */
-export const BULK_DELIVERY_COLUMNS = ['Contact No', 'Delivery Status', 'Delivery Date'] as const;
+export const BULK_DELIVERY_COLUMNS = ['Unique Order ID', 'Delivery Status', 'Delivery Date'] as const;
 
 const HEADER_ALIASES: Record<string, string> = {
-  'contact no': 'contact_no',
-  'contact number': 'contact_no',
-  'phone': 'contact_no',
+  'unique order id': 'unique_id',
+  'unique id': 'unique_id',
+  'order id': 'unique_id',
+  'order_id': 'unique_id',
   'delivery status': 'delivery_status',
   'status': 'delivery_status',
   'delivery date': 'delivered_date',
@@ -21,8 +21,7 @@ const HEADER_ALIASES: Record<string, string> = {
 export type RawRow = Record<string, unknown>;
 
 export interface MappedDeliveryRow {
-  contact_no: string | null;
-  contact_no_e164: string | null;
+  unique_id: string | null;
   delivery_status_raw: string | null;
   delivered_date: string | null;
 }
@@ -63,20 +62,19 @@ function mapHeaders(row: RawRow): RawRow {
 
 export function mapDeliveryRow(raw: RawRow): MappedDeliveryRow {
   const mapped = mapHeaders(raw);
-  const phone = normalizePhone(str(mapped.contact_no));
   return {
-    contact_no: phone.raw || str(mapped.contact_no),
-    contact_no_e164: phone.e164,
+    unique_id: str(mapped.unique_id),
     delivery_status_raw: str(mapped.delivery_status),
     delivered_date: parseSpreadsheetDate(mapped.delivered_date),
   };
 }
 
 /**
- * Format-level validation only (phone/date/status present and parseable) —
- * no DB access, mirrors validateRows() in lib/domain/import.ts. Matching a
- * row to a recipient (and whether that recipient is actually dispatched)
- * happens server-side against the DB, since it needs the campaign's data.
+ * Format-level validation only (unique id/date/status present and
+ * parseable) — no DB access, mirrors validateRows() in
+ * lib/domain/import.ts. Matching a row to a recipient (and whether that
+ * recipient is actually dispatched) happens server-side against the DB,
+ * since it needs the campaign's data.
  */
 export function validateDeliveryRows(rawRows: RawRow[]): DeliveryPreview {
   const rows: ValidatedDeliveryRow[] = [];
@@ -87,7 +85,7 @@ export function validateDeliveryRows(rawRows: RawRow[]): DeliveryPreview {
     const mapped = mapDeliveryRow(raw);
     const errors: string[] = [];
 
-    if (!mapped.contact_no_e164) errors.push('Invalid phone number');
+    if (!mapped.unique_id) errors.push('Unique Order ID required');
     if (!mapped.delivery_status_raw) errors.push('Delivery status required');
     if (!mapped.delivered_date) errors.push('Invalid/missing delivery date');
 
