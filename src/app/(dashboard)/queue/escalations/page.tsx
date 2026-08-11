@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { Badge, Select } from '@/components/ui/primitives';
+import { Badge } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Pagination } from '@/components/ui/pagination';
 import { PageHeader } from '@/components/page-header';
@@ -100,11 +101,16 @@ export default async function EscalationsPage({
 
       <FilterBar action="/queue/escalations" resetHref="/queue/escalations">
         <FilterField label="Type">
-          <Select name="type" defaultValue={typeFilter} className="w-56">
-            <option value="">All escalations</option>
-            <option value="order">Order — address change</option>
-            <option value="delivery">Delivery — issue raised</option>
-          </Select>
+          <FormSearchableSelect
+            name="type"
+            defaultValue={typeFilter}
+            allLabel="All escalations"
+            className="w-56"
+            options={[
+              { value: 'order', label: 'Order — address change' },
+              { value: 'delivery', label: 'Delivery — issue raised' },
+            ]}
+          />
         </FilterField>
         <span className="self-center text-sm text-[var(--muted)]">{total} open</span>
       </FilterBar>

@@ -17,6 +17,7 @@ export interface SearchableSelectOption {
  * Pass `allLabel` to prepend a "clear" option with value `''`.
  */
 export function SearchableSelect({
+  id,
   options,
   value,
   onChange,
@@ -24,8 +25,10 @@ export function SearchableSelect({
   searchPlaceholder = 'Search…',
   emptyLabel = 'No results found.',
   allLabel,
+  disabled = false,
   className,
 }: {
+  id?: string;
   options: SearchableSelectOption[];
   value: string;
   onChange: (value: string) => void;
@@ -33,6 +36,7 @@ export function SearchableSelect({
   searchPlaceholder?: string;
   emptyLabel?: string;
   allLabel?: string;
+  disabled?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -80,11 +84,13 @@ export function SearchableSelect({
   return (
     <div ref={rootRef} className={cn('relative', className)}>
       <button
+        id={id}
         type="button"
+        disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-left text-sm shadow-sm transition-colors hover:bg-[var(--muted-surface)] focus-visible:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40"
+        className="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-left text-sm shadow-sm transition-colors hover:bg-[var(--muted-surface)] focus-visible:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]/40 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[var(--surface)]"
       >
         <span className={cn('truncate', !selected && 'text-[var(--muted)]')}>
           {selected ? selected.label : placeholder}

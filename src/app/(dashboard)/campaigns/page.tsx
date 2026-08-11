@@ -3,7 +3,9 @@ import { Eye } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
-import { Input, Badge } from '@/components/ui/primitives';
+import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Card, Input, Select, Badge } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { PageHeader } from '@/components/page-header';
@@ -102,8 +104,18 @@ export default async function CampaignsPage({
         <FilterField label="Search">
           <Input name="q" defaultValue={sp.q ?? ''} placeholder="Brand or order reference" className="w-64" />
         </FilterField>
+        <FilterField label="Sort by">
+          <FormSearchableSelect
+            name="sort"
+            defaultValue={sort}
+            className="w-44"
+            options={[
+              { value: 'recent', label: 'Newest first' },
+              { value: 'name', label: 'Name (A–Z)' },
+            ]}
+          />
+        </FilterField>
       </FilterBar>
-
       <DataTable
         columns={columns}
         rows={rows}

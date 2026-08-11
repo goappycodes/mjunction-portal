@@ -204,6 +204,33 @@ export async function VaultView({
         searchPlaceholder="Search by name, contact, product or sealed VOC id"
         searchableSelects={[
           {
+            name: 'campaign',
+            label: 'Campaign',
+            placeholder: 'All campaigns…',
+            searchPlaceholder: 'Search campaigns…',
+            allLabel: 'All campaigns',
+            width: 'w-56',
+            options: campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
+          },
+          {
+            name: 'status',
+            label: 'Status',
+            placeholder: 'All statuses…',
+            searchPlaceholder: 'Search statuses…',
+            allLabel: 'All statuses',
+            width: 'w-56',
+            options: Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
+          },
+          {
+            name: 'telecaller',
+            label: 'Telecaller',
+            placeholder: 'Any telecaller…',
+            searchPlaceholder: 'Search telecallers…',
+            allLabel: 'All telecallers',
+            width: 'w-52',
+            options: telecallers.map((t) => ({ value: t, label: t })),
+          },
+          {
             name: 'recipientId',
             label: 'Recipient ID',
             placeholder: 'Any recipient…',
@@ -211,35 +238,6 @@ export async function VaultView({
             allLabel: 'Any recipient',
             width: 'w-64',
             options: recipientOptions,
-          },
-        ]}
-        selects={[
-          {
-            name: 'campaign',
-            label: 'Campaign',
-            width: 'w-56',
-            options: [
-              { value: '', label: 'All campaigns' },
-              ...campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
-            ],
-          },
-          {
-            name: 'status',
-            label: 'Status',
-            width: 'w-56',
-            options: [
-              { value: '', label: 'All statuses' },
-              ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
-            ],
-          },
-          {
-            name: 'telecaller',
-            label: 'Telecaller',
-            width: 'w-48',
-            options: [
-              { value: '', label: 'All telecallers' },
-              ...telecallers.map((t) => ({ value: t, label: t })),
-            ],
           },
         ]}
       >
