@@ -1,7 +1,7 @@
 import {
   SkeletonHeader,
   SkeletonFilterBar,
-  SkeletonCardGrid,
+  SkeletonTable,
 } from '@/components/ui/skeleton';
 
 export default function CampaignsLoading() {
@@ -9,7 +9,7 @@ export default function CampaignsLoading() {
     <div className="space-y-6">
       <SkeletonHeader />
       <SkeletonFilterBar />
-      <SkeletonCardGrid count={6} />
+      <SkeletonTable rows={6} cols={5} />
     </div>
   );
 }

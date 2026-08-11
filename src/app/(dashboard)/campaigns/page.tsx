@@ -1,15 +1,23 @@
 import Link from 'next/link';
+import { Eye } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
-import { Card, Input, Badge } from '@/components/ui/primitives';
-import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Card, Input, Select, Badge } from '@/components/ui/primitives';
+import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { DataTable, type Column } from '@/components/ui/data-table';
 import { PageHeader } from '@/components/page-header';
 import { formatDate } from '@/lib/utils';
+import type { Campaign } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
+
+interface CampaignRow extends Campaign {
+  recipientCount: number;
+  vocCount: number;
+}
 
 export default async function CampaignsPage({
   searchParams,
@@ -40,6 +48,49 @@ export default async function CampaignsPage({
     if (r.status === 'confirmed' || r.status === 'closed')
       confirmed[r.campaign_id] = (confirmed[r.campaign_id] ?? 0) + 1;
   }
+
+  const rows: CampaignRow[] = (campaigns ?? []).map((c) => ({
+    ...c,
+    recipientCount: totals[c.id] ?? 0,
+    vocCount: confirmed[c.id] ?? 0,
+  }));
+
+  const columns: Column<CampaignRow>[] = [
+    {
+      header: 'Campaign',
+      cell: (c) => (
+        <>
+          <p className="font-medium">{c.calling_from}</p>
+          <p className="text-xs text-[var(--muted)]">{c.order_reference ?? 'No order reference'}</p>
+        </>
+      ),
+    },
+    {
+      header: 'Recipients',
+      className: 'tabular-nums',
+      cell: (c) => c.recipientCount,
+    },
+    {
+      header: 'Sealed VOCs',
+      cell: (c) => (c.vocCount > 0 ? <Badge color="green">{c.vocCount}</Badge> : <span className="text-[var(--muted)]">—</span>),
+    },
+    {
+      header: 'Duration',
+      className: 'text-xs text-[var(--muted)]',
+      cell: (c) => `${formatDate(c.start_date)} – ${formatDate(c.end_date)}`,
+    },
+    {
+      header: '',
+      className: 'text-right',
+      cell: (c) => (
+        <Link href={`/campaigns/${c.id}`}>
+          <Button variant="secondary" size="sm">
+            <Eye className="h-4 w-4" /> View
+          </Button>
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -72,36 +123,12 @@ export default async function CampaignsPage({
         </FilterField>
       </FilterBar>
 
-      {campaigns && campaigns.length ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {campaigns.map((c) => (
-            <Link key={c.id} href={`/campaigns/${c.id}`}>
-              <Card className="group h-full p-5 transition-all hover:-translate-y-0.5 hover:border-[var(--primary)] hover:shadow-md">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold group-hover:text-[var(--primary)]">{c.calling_from}</p>
-                  {(confirmed[c.id] ?? 0) > 0 && (
-                    <Badge color="green">{confirmed[c.id]} VOC</Badge>
-                  )}
-                </div>
-                <p className="mt-0.5 text-sm text-[var(--muted)]">
-                  {c.order_reference ?? 'No order reference'}
-                </p>
-                <div className="mt-4 flex items-center justify-between text-sm">
-                  <span className="font-medium">{totals[c.id] ?? 0} recipients</span>
-                  <span className="text-xs text-[var(--muted)]">
-                    {formatDate(c.start_date)} – {formatDate(c.end_date)}
-                  </span>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      ) : (
-        <EmptyState>
-          {sp.q ? 'No campaigns match your search.' : 'No campaigns yet.'}
-          {!sp.q && user.role === 'admin' && ' Create one to get started.'}
-        </EmptyState>
-      )}
+      <DataTable
+        columns={columns}
+        rows={rows}
+        rowKey={(c) => c.id}
+        empty={sp.q ? 'No campaigns match your search.' : 'No campaigns yet.'}
+      />
     </div>
   );
 }
