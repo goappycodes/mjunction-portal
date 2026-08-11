@@ -18,15 +18,10 @@ interface CampaignRow extends Campaign {
   vocCount: number;
 }
 
-interface CampaignRow extends Campaign {
-  recipientCount: number;
-  vocCount: number;
-}
-
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
   const sp = await searchParams;
   const sort = sp.sort === "name" ? "name" : "recent";
