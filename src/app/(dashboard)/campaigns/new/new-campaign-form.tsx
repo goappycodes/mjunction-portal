@@ -3,7 +3,8 @@
 import { useActionState } from 'react';
 import { createCampaign, type ActionState } from '@/app/actions/campaigns';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, Input, Label, Select } from '@/components/ui/primitives';
+import { Card, CardContent, Input, Label } from '@/components/ui/primitives';
+import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import type { Language } from '@/lib/database.types';
 
 export function NewCampaignForm({ languages }: { languages: Language[] }) {
@@ -36,13 +37,13 @@ export function NewCampaignForm({ languages }: { languages: Language[] }) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="default_language">Default language</Label>
-            <Select id="default_language" name="default_language" defaultValue="hi">
-              {languages.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.display_name}
-                </option>
-              ))}
-            </Select>
+            <FormSearchableSelect
+              id="default_language"
+              name="default_language"
+              defaultValue="hi"
+              searchPlaceholder="Search languages…"
+              options={languages.map((l) => ({ value: l.code, label: l.display_name }))}
+            />
             <p className="text-xs text-[var(--muted)]">
               Fallback when the recipient gives no input. Default map is 1=Hindi, 2=English.
             </p>

@@ -4,8 +4,6 @@ export default function RecipientsHubLoading() {
   return (
     <div className="space-y-6">
       <SkeletonHeader />
-      {/* Call runner card */}
-      <Skeleton className="h-28 w-full rounded-xl" />
       {/* Filter card: search + controls */}
       <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
         <Skeleton className="h-9 w-full max-w-sm" />

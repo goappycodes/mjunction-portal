@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { Input, Select } from '@/components/ui/primitives';
+import { Input } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Pagination } from '@/components/ui/pagination';
 import { PageHeader } from '@/components/page-header';
@@ -90,11 +91,16 @@ export default async function UnreachablePage({
           <Input name="q" defaultValue={sp.q ?? ''} placeholder="Name or phone" className="w-56" />
         </FilterField>
         <FilterField label="Stage">
-          <Select name="stage" defaultValue={sp.stage ?? ''} className="w-48">
-            <option value="">Order &amp; delivery</option>
-            <option value="order">Order unreachable</option>
-            <option value="delivery">Delivery unreachable</option>
-          </Select>
+          <FormSearchableSelect
+            name="stage"
+            defaultValue={sp.stage ?? ''}
+            allLabel="Order & delivery"
+            className="w-48"
+            options={[
+              { value: 'order', label: 'Order unreachable' },
+              { value: 'delivery', label: 'Delivery unreachable' },
+            ]}
+          />
         </FilterField>
         <span className="self-center text-sm text-[var(--muted)]">{total} pending</span>
       </FilterBar>

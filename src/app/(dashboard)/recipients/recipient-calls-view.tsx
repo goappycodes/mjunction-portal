@@ -1,12 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { getLanguages, langName } from '@/lib/domain/languages';
 import { RecipientsTable, type RecipientRow } from './recipients-table';
-import { CallRunner } from './call-runner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Pagination } from '@/components/ui/pagination';
 import { TableFilters } from '@/components/ui/table-filters';
 import { STATUS_LABELS } from '@/lib/domain/labels';
-import { ORDER_CALLABLE, DELIVERY_CALLABLE } from '@/lib/domain/status';
 import { buildQuery } from '@/lib/utils';
 import type { RecipientStatus } from '@/lib/database.types';
 
@@ -20,7 +18,7 @@ const NO_MATCH = '00000000-0000-0000-0000-000000000000';
  * recent attempt's timestamp). Duplicate columns are dropped — the
  * recipient's preferred language is shown, not the per-call language. With no
  * campaign selected, every campaign's recipients are shown with a Campaign
- * column; picking a campaign (via the filter) narrows and enables call batches.
+ * column; picking a campaign (via the filter) narrows the list.
  */
 export async function RecipientCallsView({
   campaignId,
@@ -72,28 +70,9 @@ export async function RecipientCallsView({
     .not('telecaller_name', 'is', null);
   if (activeCampaignId) telecallerQuery = telecallerQuery.eq('campaign_id', activeCampaignId);
 
-  // Call-batch eligibility counts only matter when a specific campaign is
-  // active (a batch runs against one campaign). Run in parallel with the list.
-  const countsPromise =
-    isAdmin && activeCampaignId
-      ? Promise.all([
-          supabase
-            .from('recipients')
-            .select('*', { count: 'exact', head: true })
-            .eq('campaign_id', activeCampaignId)
-            .in('status', ORDER_CALLABLE),
-          supabase
-            .from('recipients')
-            .select('*', { count: 'exact', head: true })
-            .eq('campaign_id', activeCampaignId)
-            .in('status', DELIVERY_CALLABLE),
-        ])
-      : Promise.resolve(null);
-
-  const [{ data: recipients, count }, allLanguages, counts, { data: telecallerRows }] = await Promise.all([
+  const [{ data: recipients, count }, allLanguages, { data: telecallerRows }] = await Promise.all([
     query.order('updated_at', { ascending: false }).range(from, to),
     getLanguages(supabase),
-    countsPromise,
     telecallerQuery,
   ]);
 
@@ -138,45 +117,37 @@ export async function RecipientCallsView({
 
   return (
     <div className="space-y-4">
-      {isAdmin && activeCampaignId && counts && (
-        <CallRunner
-          campaignId={activeCampaignId}
-          orderEligible={counts[0].count ?? 0}
-          deliveryEligible={counts[1].count ?? 0}
-        />
-      )}
-
       <TableFilters
         key={[activeCampaignId ?? '', sp.status ?? '', sp.telecaller ?? ''].join('|')}
         basePath={BASE}
         searchPlaceholder="Name, phone or product"
-        selects={[
+        searchableSelects={[
           {
             name: 'campaign',
             label: 'Campaign',
+            placeholder: 'All campaigns…',
+            searchPlaceholder: 'Search campaigns…',
+            allLabel: 'All campaigns',
             width: 'w-56',
-            options: [
-              { value: '', label: 'All campaigns' },
-              ...campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
-            ],
+            options: campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
           },
           {
             name: 'status',
             label: 'Status',
+            placeholder: 'All statuses…',
+            searchPlaceholder: 'Search statuses…',
+            allLabel: 'All statuses',
             width: 'w-48',
-            options: [
-              { value: '', label: 'All statuses' },
-              ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
-            ],
+            options: Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
           },
           {
             name: 'telecaller',
             label: 'Telecaller',
+            placeholder: 'Any telecaller…',
+            searchPlaceholder: 'Search telecallers…',
+            allLabel: 'All telecallers',
             width: 'w-48',
-            options: [
-              { value: '', label: 'All telecallers' },
-              ...telecallers.map((t) => ({ value: t, label: t })),
-            ],
+            options: telecallers.map((t) => ({ value: t, label: t })),
           },
         ]}
       />

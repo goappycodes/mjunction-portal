@@ -5,8 +5,9 @@ import { getMetrics } from '@/lib/domain/metrics';
 import { getLanguageMap } from '@/lib/domain/languages';
 import { StatCard } from '@/components/stat-card';
 import { BarChartCard, PieChartCard } from '@/components/charts';
-import { Card, CardHeader, CardTitle, CardContent, Select } from '@/components/ui/primitives';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
+import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import { PageHeader } from '@/components/page-header';
 import { statusLabel } from '@/lib/domain/labels';
 import type { RecipientStatus } from '@/lib/database.types';
@@ -64,14 +65,14 @@ export default async function OverviewPage({
 
       <FilterBar action="/" resetHref="/">
         <FilterField label="Campaign scope">
-          <Select name="campaign" defaultValue={scoped ?? ''} className="w-64">
-            <option value="">All campaigns</option>
-            {(allCampaigns ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.calling_from}
-              </option>
-            ))}
-          </Select>
+          <FormSearchableSelect
+            name="campaign"
+            defaultValue={scoped ?? ''}
+            allLabel="All campaigns"
+            searchPlaceholder="Search campaigns…"
+            className="w-64"
+            options={(allCampaigns ?? []).map((c) => ({ value: c.id, label: c.calling_from }))}
+          />
         </FilterField>
       </FilterBar>
 

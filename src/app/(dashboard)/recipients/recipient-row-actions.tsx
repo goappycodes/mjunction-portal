@@ -5,7 +5,8 @@ import { Truck, PackageCheck, PhoneOutgoing } from 'lucide-react';
 import { saveDispatch, markDelivered } from '@/app/actions/dispatch';
 import { runDeliveryConfirmation } from '@/app/actions/calls';
 import { Button } from '@/components/ui/button';
-import { Input, Label, Select } from '@/components/ui/primitives';
+import { Input, Label } from '@/components/ui/primitives';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Modal } from '@/components/ui/modal';
 import type { RecipientStatus } from '@/lib/database.types';
 
@@ -120,13 +121,11 @@ export function RecipientRowActions({
       <Modal open={modal === 'dispatch'} onClose={close} title="Dispatch item">
         <div className="space-y-4">
           <Field label="Delivery partner">
-            <Select value={courier} onChange={(e) => setCourier(e.target.value)}>
-              {COURIERS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
+            <SearchableSelect
+              value={courier}
+              onChange={setCourier}
+              options={COURIERS.map((c) => ({ value: c, label: c }))}
+            />
           </Field>
           <Field label="AWB number">
             <Input
