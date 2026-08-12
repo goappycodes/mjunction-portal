@@ -70,6 +70,8 @@ export type Recipient = {
   unique_id: string;
   calling_from: string | null;
   telecaller_name: string | null;
+  /** E.164, used by connect-telecaller to live-transfer an address-issue call. */
+  telecaller_phone: string | null;
   contact_no: string | null;
   contact_no_e164: string | null;
   customer_name: string | null;

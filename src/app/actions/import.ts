@@ -81,6 +81,7 @@ export async function commitImport(input: {
       unique_id: r.unique_id as string,
       calling_from: r.calling_from ?? campaign.calling_from,
       telecaller_name: r.telecaller_name,
+      telecaller_phone: r.telecaller_phone,
       contact_no: r.contact_no,
       contact_no_e164: r.contact_no_e164,
       customer_name: r.customer_name,

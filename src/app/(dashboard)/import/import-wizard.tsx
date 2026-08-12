@@ -109,6 +109,7 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
       'ORD-0001',
       'Acme Rewards',
       'Priya Sharma',
+      '9876543211',
       '9876543210',
       'Rahul Kumar',
       '221B Baker Street, Mumbai, MH 400001',
@@ -154,12 +155,14 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
-            Expected columns: Unique Order ID, Calling From, Tele Caller name, Contact No,
-            Customer Name, Address, Product Name, and (delivery file only) Product Delivery
-            Date. Unique Order ID is required and must be distinct per recipient/order — it's
-            the id used for bulk-delivery matching and IVR calls. Phones are normalised to
-            E.164 (India); duplicates within the campaign are flagged. Not sure about the
-            format? Download the template above and fill it in.
+            Expected columns: Unique Order ID, Calling From, Tele Caller name, Tele Caller
+            Contact No, Contact No, Customer Name, Address, Product Name, and (delivery file
+            only) Product Delivery Date. Unique Order ID is required and must be distinct per
+            recipient/order — it's the id used for bulk-delivery matching and IVR calls. Tele
+            Caller Contact No is used to live-transfer a call when the recipient reports an
+            address issue. Phones are normalised to E.164 (India); duplicates within the
+            campaign are flagged. Not sure about the format? Download the template above and
+            fill it in.
           </p>
           <input
             type="file"
