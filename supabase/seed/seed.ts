@@ -145,6 +145,10 @@ async function createTestRecipient(campaign: Campaign, adminId: string): Promise
       unique_id: TEST_UNIQUE_ID,
       calling_from: campaign.calling_from,
       telecaller_name: 'Ravi Telecaller',
+      // Same as TEST_PHONE on purpose: there is only one real phone in this
+      // test setup, so an address-issue transfer bridges back to it — lets
+      // the connect-telecaller flow be verified end-to-end with one device.
+      telecaller_phone: TEST_PHONE,
       contact_no: TEST_PHONE.replace('+91', ''),
       contact_no_e164: TEST_PHONE,
       customer_name: 'Test Recipient',
