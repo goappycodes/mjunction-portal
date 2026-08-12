@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getLanguageMap, langName } from '@/lib/domain/languages';
 import { StatusBadge } from '@/components/status-badge';
 import { RecipientActions } from './recipient-actions';
+import { RecipientEditButton } from './recipient-edit-button';
 import { RecipientRollback } from './recipient-rollback';
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui/primitives';
 import { formatDate, formatDateTime, titleCase } from '@/lib/utils';
@@ -51,7 +52,7 @@ export default async function RecipientPage({
   params: Promise<{ recipientId: string }>;
 }) {
   const { recipientId } = await params;
-  await requireUser();
+  const user = await requireUser();
   const supabase = await createClient();
 
   const { data: recipient } = await supabase
@@ -109,14 +110,17 @@ export default async function RecipientPage({
         {/* Left column: details + actions */}
         <div className="space-y-5 lg:col-span-1">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle>Details</CardTitle>
+              {user.role === 'admin' && <RecipientEditButton recipient={recipient} />}
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <Field label="Contact" value={recipient.contact_no_e164 ?? recipient.contact_no} mono />
               <Field label="Product" value={recipient.product_name} />
               <Field label="Delivery date" value={formatDate(recipient.product_delivery_date)} />
               <Field label="Address" value={recipient.address} />
+              <Field label="Telecaller" value={recipient.telecaller_name} />
+              <Field label="Telecaller contact" value={recipient.telecaller_phone} mono />
               <Field
                 label="Language source"
                 value={recipient.language_source ? titleCase(recipient.language_source) : '—'}
