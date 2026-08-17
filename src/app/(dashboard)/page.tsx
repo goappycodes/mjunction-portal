@@ -1,16 +1,13 @@
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { getMetrics } from '@/lib/domain/metrics';
-import { getLanguageMap } from '@/lib/domain/languages';
+import { getDailyActivity, getMetrics } from '@/lib/domain/metrics';
 import { StatCard } from '@/components/stat-card';
-import { BarChartCard, PieChartCard } from '@/components/charts';
+import { StackedBarChartCard } from '@/components/charts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/primitives';
 import { FilterBar, FilterField } from '@/components/ui/filter-bar';
 import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import { PageHeader } from '@/components/page-header';
-import { statusLabel } from '@/lib/domain/labels';
-import type { RecipientStatus } from '@/lib/database.types';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,20 +26,25 @@ export default async function OverviewPage({
     .order('calling_from');
   const scoped = sp.campaign && allCampaigns?.some((c) => c.id === sp.campaign) ? sp.campaign : undefined;
 
-  const [metrics, langMap] = await Promise.all([
+  const [metrics, activity] = await Promise.all([
     getMetrics(supabase, scoped),
-    getLanguageMap(supabase),
+    getDailyActivity(supabase, scoped),
   ]);
   const campaignsRes = { count: allCampaigns?.length ?? 0 };
 
-  const statusData = Object.entries(metrics.statusCounts)
-    .map(([status, value]) => ({ label: statusLabel(status as RecipientStatus), value }))
-    .sort((a, b) => b.value - a.value);
-
-  const languageData = Object.entries(metrics.languageCounts).map(([code, value]) => ({
-    label: code === 'unset' ? 'Not captured' : langMap[code] ?? code,
-    value,
+  // Day labels are short (`17 Aug`) because 14 of them share one axis; the
+  // full date is still in the tooltip via the series values.
+  const activityData = activity.days.map((d) => ({
+    label: new Date(`${d.date}T00:00:00`).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+    }),
+    Confirmed: d.confirmed,
+    Issues: d.issues,
+    Unreachable: d.unreachable,
+    'In progress': d.inProgress,
   }));
+  const activityTotal = activity.days.reduce((s, d) => s + d.totalCalls, 0);
 
   return (
     <div className="space-y-6">
@@ -50,8 +52,8 @@ export default async function OverviewPage({
         title="Overview"
         description={
           scoped
-            ? 'Pipeline, confirmation rates and language mix for the selected campaign.'
-            : 'Cross-campaign pipeline, confirmation rates and language mix.'
+            ? 'Confirmation rates and daily call activity for the selected campaign.'
+            : 'Cross-campaign confirmation rates and daily call activity.'
         }
         actions={
           <Link
@@ -85,54 +87,48 @@ export default async function OverviewPage({
         <StatCard label="Sealed VOCs" value={metrics.vocSealed} accent="indigo" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <StatCard
-          label="Open escalations (issues)"
-          value={metrics.escalations}
-          sub="Delivery issues raised (press 2)"
-        />
-        <StatCard
-          label="Unreachable"
-          value={metrics.unreachable}
-          sub="Order + delivery, awaiting retry"
-        />
-        <StatCard
-          label="Confirmed (VOC)"
-          value={metrics.statusCounts['confirmed'] ?? 0}
-          sub="Delivery confirmed & sealed"
-        />
-      </div>
+      <section className="space-y-4">
+        <div className="flex items-baseline justify-between gap-4">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+            Today&apos;s activity
+          </h2>
+          <p className="text-xs text-[var(--muted)]">
+            Calls placed today (IST){scoped ? ' · selected campaign' : ' · all campaigns'}
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <StatCard label="Calls placed" value={activity.today.totalCalls} accent="indigo" />
+          <StatCard label="Order-confirm calls" value={activity.today.orderCalls} />
+          <StatCard label="Delivery-confirm calls" value={activity.today.deliveryCalls} />
+          <StatCard label="Confirmed" value={activity.today.confirmed} accent="green" />
+          <StatCard label="Issues raised" value={activity.today.issues} accent="amber" />
+          <StatCard label="Unreachable" value={activity.today.unreachable} accent="red" />
+        </div>
+
         <Card>
           <CardHeader>
-            <CardTitle>Pipeline by status</CardTitle>
+            <CardTitle>Calls placed — last 14 days</CardTitle>
           </CardHeader>
           <CardContent>
-            {statusData.length ? (
-              <BarChartCard data={statusData} />
+            {activityTotal ? (
+              <StackedBarChartCard
+                data={activityData}
+                series={[
+                  { key: 'Confirmed', label: 'Confirmed', color: '#16a34a' },
+                  { key: 'Issues', label: 'Issues', color: '#d97706' },
+                  { key: 'Unreachable', label: 'Unreachable', color: '#dc2626' },
+                  { key: 'In progress', label: 'In progress', color: '#94a3b8' },
+                ]}
+              />
             ) : (
               <p className="py-12 text-center text-sm text-[var(--muted)]">
-                No recipients yet.
+                No calls placed in the last 14 days.
               </p>
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Language distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {languageData.length ? (
-              <PieChartCard data={languageData} />
-            ) : (
-              <p className="py-12 text-center text-sm text-[var(--muted)]">
-                No language captured yet.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      </section>
     </div>
   );
 }

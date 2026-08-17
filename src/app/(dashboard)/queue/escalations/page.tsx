@@ -34,30 +34,33 @@ export default async function EscalationsPage({
   await requireUser();
   const supabase = await createClient();
 
-  // Delivery issues.
-  const { data: issues } = await supabase
+  // Every press-2, from either script, now moves the recipient to
+  // `issue_raised` — so this one status query is the whole queue. It replaces
+  // the old pair of queries (delivery issues by status, order escalations by
+  // hunting for a `transferred_to_agent` call outcome), which existed only
+  // because an order-phase press-2 used to leave the status untouched.
+  const { data: escalated } = await supabase
     .from('recipients')
     .select('id, customer_name, contact_no_e164, updated_at, campaigns(calling_from)')
     .eq('status', 'issue_raised')
     .order('updated_at', { ascending: true });
 
-  // Order escalations: press-2 transfers still awaiting agent (status pending).
-  const { data: transfers } = await supabase
-    .from('call_attempts')
-    .select('recipient_id')
-    .eq('call_type', 'order_confirmation')
-    .eq('outcome', 'transferred_to_agent');
-  const transferIds = Array.from(new Set((transfers ?? []).map((t) => t.recipient_id)));
-
-  let orderEscalations: typeof issues = [];
-  if (transferIds.length) {
-    const { data } = await supabase
-      .from('recipients')
-      .select('id, customer_name, contact_no_e164, updated_at, campaigns(calling_from)')
-      .in('id', transferIds)
-      .eq('status', 'order_confirm_pending')
-      .order('updated_at', { ascending: true });
-    orderEscalations = data ?? [];
+  // Which half of the pipeline each one came from — the status no longer says,
+  // so the most recent call's type does. Same rule as the recipient page and
+  // `escalationPhase` in app/actions/agent.ts. One query for all of them
+  // rather than one per row.
+  const escalatedIds = (escalated ?? []).map((r) => r.id);
+  const phase = new Map<string, string>();
+  if (escalatedIds.length) {
+    const { data: recentCalls } = await supabase
+      .from('call_attempts')
+      .select('recipient_id, call_type, created_at')
+      .in('recipient_id', escalatedIds)
+      .order('created_at', { ascending: false });
+    // Newest-first, so the first row seen per recipient is its latest call.
+    for (const c of recentCalls ?? []) {
+      if (!phase.has(c.recipient_id)) phase.set(c.recipient_id, c.call_type);
+    }
   }
 
   const cname = (c: unknown) => {
@@ -65,24 +68,17 @@ export default async function EscalationsPage({
     return (cc as { calling_from?: string } | null)?.calling_from ?? null;
   };
 
-  let items: QueueItem[] = [
-    ...(orderEscalations ?? []).map((r) => ({
-      id: r.id,
-      customer_name: r.customer_name,
-      contact: r.contact_no_e164,
-      campaign: cname(r.campaigns),
-      type: 'Order — address change' as const,
-      updated_at: r.updated_at,
-    })),
-    ...(issues ?? []).map((r) => ({
-      id: r.id,
-      customer_name: r.customer_name,
-      contact: r.contact_no_e164,
-      campaign: cname(r.campaigns),
-      type: 'Delivery — issue raised' as const,
-      updated_at: r.updated_at,
-    })),
-  ];
+  let items: QueueItem[] = (escalated ?? []).map((r) => ({
+    id: r.id,
+    customer_name: r.customer_name,
+    contact: r.contact_no_e164,
+    campaign: cname(r.campaigns),
+    type:
+      phase.get(r.id) === 'delivery_confirmation'
+        ? ('Delivery — issue raised' as const)
+        : ('Order — address change' as const),
+    updated_at: r.updated_at,
+  }));
 
   if (typeFilter === 'order') items = items.filter((i) => i.type.startsWith('Order'));
   else if (typeFilter === 'delivery') items = items.filter((i) => i.type.startsWith('Delivery'));
@@ -96,7 +92,7 @@ export default async function EscalationsPage({
     <div className="space-y-4">
       <PageHeader
         title="Escalations"
-        description="Press-2 transfers awaiting an agent: order address changes (captured manually) and delivery issues."
+        description="Press-2 escalations awaiting an agent: order address changes (captured manually) and delivery issues."
       />
 
       <FilterBar action="/queue/escalations" resetHref="/queue/escalations">

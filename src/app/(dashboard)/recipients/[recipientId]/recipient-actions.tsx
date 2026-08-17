@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { resolveOrderEscalation, resolveDeliveryIssue } from '@/app/actions/agent';
+import { resolveOrderEscalation, resolveDeliveryIssue, markUnreachable } from '@/app/actions/agent';
 import { retryCall } from '@/app/actions/calls';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, Textarea, Label } from '@/components/ui/primitives';
@@ -33,12 +33,26 @@ export function RecipientActions({
     }
   }
 
+  // An `issue_raised` recipient can come from either half of the pipeline now
+  // that every press-2 lands there, and the two are resolved differently — the
+  // order half by capturing the corrected address, the delivery half by
+  // closing with a note. `isOrderEscalation` (derived from the latest call's
+  // type on the server) is what tells them apart.
   const showOrderEscalation =
-    isOrderEscalation && (status === 'order_confirm_pending' || status === 'order_unreachable');
-  const showIssue = status === 'issue_raised';
+    isOrderEscalation &&
+    (status === 'issue_raised' ||
+      status === 'order_confirm_pending' ||
+      status === 'order_unreachable');
+  const showIssue = status === 'issue_raised' && !isOrderEscalation;
   const showRetry = status === 'order_unreachable' || status === 'delivery_unreachable';
+  // Offered wherever a call is still owed, so an agent who couldn't get
+  // through can record that without waiting for an IVR attempt to fail.
+  const showMarkUnreachable =
+    status === 'imported' ||
+    status === 'order_confirm_pending' ||
+    status === 'delivery_confirm_pending';
 
-  if (!showOrderEscalation && !showIssue && !showRetry) return null;
+  if (!showOrderEscalation && !showIssue && !showRetry && !showMarkUnreachable) return null;
 
   return (
     <Card>
@@ -126,6 +140,30 @@ export function RecipientActions({
               loading={pending}
             >
               {pending ? 'Retrying…' : 'Retry call'}
+            </Button>
+          </div>
+        )}
+
+        {showMarkUnreachable && (
+          <div className="space-y-2">
+            <Label>Could not connect</Label>
+            <p className="text-xs text-[var(--muted)]">
+              Records a failed attempt and moves this recipient to the unreachable queue.
+              The IVR does this automatically when a call doesn&apos;t connect — use this
+              when there is no automatic result to go on.
+            </p>
+            <Textarea
+              placeholder="Note (optional) — e.g. rang out, switched off"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={2}
+            />
+            <Button
+              variant="secondary"
+              onClick={() => start(async () => done(await markUnreachable({ recipientId, note })))}
+              loading={pending}
+            >
+              Mark unreachable
             </Button>
           </div>
         )}
