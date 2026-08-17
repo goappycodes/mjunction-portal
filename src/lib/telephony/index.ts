@@ -9,20 +9,18 @@ export type { TelephonyProvider, PlaceCallInput, PlaceCallResult } from './types
  * A real Exotel call is asynchronous (dial, then Gather/StatusCallback over
  * the life of the call) and is placed via the separate IVR engine service,
  * not via this synchronous placeCall() contract — see
- * src/lib/telephony/ivr-engine-client.ts's triggerOrderConfirmationCall and
- * src/app/actions/calls.ts's startOrderConfirmationCall, which call it
- * directly. This class exists only so TELEPHONY_PROVIDER=exotel doesn't
- * silently fall back to the mock for call types the IVR engine doesn't
- * support yet (delivery confirmation).
+ * src/lib/telephony/ivr-engine-client.ts, whose triggers every real-call path
+ * in src/app/actions/calls.ts uses directly, for both call types. This class
+ * exists only so TELEPHONY_PROVIDER=exotel fails loudly instead of silently
+ * falling back to the mock if some future caller reaches for placeCall().
  */
 class ExotelProvider implements TelephonyProvider {
   readonly name = 'exotel';
   async placeCall(_input: PlaceCallInput): Promise<PlaceCallResult> {
     throw new Error(
-      'ExotelProvider.placeCall is not implemented — real order-confirmation calls go through ' +
-        'triggerOrderConfirmationCall()/startOrderConfirmationCall() instead, since a real call ' +
-        "does not resolve synchronously. Delivery-confirmation calls aren't supported by the IVR " +
-        'engine yet; set TELEPHONY_PROVIDER=mock to use those in the meantime.',
+      'ExotelProvider.placeCall is not implemented — real calls go through the IVR engine ' +
+        '(triggerOrderConfirmationCall / triggerDeliveryConfirmationCall) instead, since a real ' +
+        'call does not resolve synchronously.',
     );
   }
 }

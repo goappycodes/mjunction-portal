@@ -24,6 +24,14 @@ export async function getSignedVocUrl(vocId: string): Promise<SignedUrlResult> {
     .single();
   if (error || !voc) return { error: 'Recording not found or access denied' };
 
+  // A VOC sealed from a real Exotel call stores the provider's own recording
+  // URL rather than a `voc` bucket object key — that audio is never uploaded
+  // here, so there is nothing to sign. Handed back as-is (the RLS read above
+  // is still the access check).
+  if (/^https?:\/\//i.test(voc.storage_path)) {
+    return { url: voc.storage_path };
+  }
+
   const service = createServiceClient();
   const { data, error: signErr } = await service.storage
     .from('voc')
