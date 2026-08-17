@@ -67,11 +67,14 @@ export class MockTelephonyProvider implements TelephonyProvider {
     let dtmf: string | null = dtmfLangKey;
 
     if (input.callType === 'order_confirmation') {
-      // ~70% confirm (press 1), ~15% correction/problem (press 2),
-      // ~15% no-answer / unreachable.
+      // ~70% confirm (press 1), ~15% issue raised (press 2), ~15% no-answer /
+      // unreachable. `issue_raised` rather than `transferred_to_agent` since
+      // the live transfer is retired and every press-2 raises an issue — the
+      // mock has to produce the same outcomes the real IVR does, or mock runs
+      // exercise a state the pipeline no longer reaches.
       outcome = pickWeighted<CallOutcome>([
         ['confirmed', 70],
-        ['transferred_to_agent', 15],
+        ['issue_raised', 15],
         ['no_answer', 10],
         ['wrong_number', 5],
       ]);

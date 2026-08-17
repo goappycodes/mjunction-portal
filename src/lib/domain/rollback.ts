@@ -7,6 +7,15 @@ import type { RecipientStatus } from '@/lib/database.types';
  * delivery_unreachable) share a stage with the milestone they branch from —
  * see STATUS_TRANSITIONS in ./status.ts for the real transition graph, which
  * this intentionally simplifies.
+ *
+ * KNOWN LIMITATION: `issue_raised` is pinned to the delivery stage, but since
+ * every press-2 now raises an issue it can also belong to the order half (see
+ * the ISSUE_RAISED note in ./status.ts). An order-phase escalation therefore
+ * gets offered delivery-stage rollback targets it never actually reached.
+ * Left as-is because this whole module is the dev-only rollback tool
+ * (ENABLE_ORDER_ROLLBACK) and a static per-status stage cannot tell the two
+ * apart — resolving it means passing the escalation phase in, the way
+ * `escalationPhase` in app/actions/agent.ts derives it from the last call.
  */
 const STAGE: Record<RecipientStatus, number> = {
   imported: 0,

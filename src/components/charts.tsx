@@ -3,7 +3,9 @@
 import {
   Bar,
   BarChart,
+  CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -46,6 +48,52 @@ export function BarChartCard({
             <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
           ))}
         </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+/**
+ * Stacked bars over a time axis — one bar per day, segmented by series.
+ *
+ * Distinct from BarChartCard above, which colours each bar independently
+ * because its categories are unrelated (pipeline statuses). Here the segments
+ * of one bar are parts of a whole (the day's calls), so each *series* gets a
+ * stable colour and the legend is meaningful.
+ */
+export function StackedBarChartCard({
+  data,
+  series,
+  height = 260,
+}: {
+  data: Record<string, string | number>[];
+  series: { key: string; label: string; color: string }[];
+  height?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
+        <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="3 3" />
+        <XAxis
+          dataKey="label"
+          interval="preserveStartEnd"
+          tick={{ fontSize: 11, fill: '#64748b' }}
+          tickLine={false}
+        />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} width={32} />
+        <Tooltip cursor={{ fill: '#f1f5f9' }} />
+        <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />
+        {series.map((s, i) => (
+          <Bar
+            key={s.key}
+            dataKey={s.key}
+            name={s.label}
+            stackId="a"
+            fill={s.color}
+            // Round only the topmost segment so the stack reads as one bar.
+            radius={i === series.length - 1 ? [4, 4, 0, 0] : undefined}
+          />
+        ))}
       </BarChart>
     </ResponsiveContainer>
   );

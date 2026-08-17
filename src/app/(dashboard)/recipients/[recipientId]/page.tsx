@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { RecipientActions } from './recipient-actions';
 import { RecipientEditButton } from './recipient-edit-button';
 import { RecipientRollback } from './recipient-rollback';
+import { RecipientStatusOverride } from './recipient-status-override';
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui/primitives';
 import { formatDate, formatDateTime, titleCase } from '@/lib/utils';
 import { CALL_TYPE_LABELS, OUTCOME_LABELS } from '@/lib/domain/labels';
@@ -83,8 +84,14 @@ export default async function RecipientPage({
     ? recipient.campaigns[0]
     : recipient.campaigns;
 
-  const lastOrderCall = (calls ?? []).find((c) => c.call_type === 'order_confirmation');
-  const isOrderEscalation = lastOrderCall?.outcome === 'transferred_to_agent';
+  // Which half of the pipeline an escalation came from. Every press-2 now lands
+  // on `issue_raised` regardless of script, so the status no longer says which
+  // — the most recent call's type does. Must stay in step with
+  // `escalationPhase` in app/actions/agent.ts, which re-derives this
+  // server-side before allowing a resolution (same query, same default).
+  // `calls` is already ordered newest-first.
+  const isOrderEscalation = ((calls ?? [])[0]?.call_type ?? 'order_confirmation') ===
+    'order_confirmation';
 
   return (
     <div className="space-y-5">
@@ -201,6 +208,10 @@ export default async function RecipientPage({
             isOrderEscalation={isOrderEscalation}
             currentAddress={recipient.address}
           />
+
+          {user.role === 'admin' && (
+            <RecipientStatusOverride recipientId={recipient.id} status={recipient.status} />
+          )}
 
           {ORDER_ROLLBACK_ENABLED && (
             <RecipientRollback recipientId={recipient.id} status={recipient.status} />
