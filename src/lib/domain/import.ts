@@ -10,6 +10,7 @@ export const IMPORT_COLUMNS = [
   'Unique Order ID',
   'Calling From',
   'Tele Caller name',
+  'Tele Caller Contact No',
   'Contact No',
   'Customer Name',
   'Address',
@@ -25,6 +26,10 @@ const HEADER_ALIASES: Record<string, string> = {
   'calling from': 'calling_from',
   'tele caller name': 'telecaller_name',
   'telecaller name': 'telecaller_name',
+  'tele caller contact no': 'telecaller_phone',
+  'telecaller contact no': 'telecaller_phone',
+  'tele caller phone': 'telecaller_phone',
+  'telecaller phone': 'telecaller_phone',
   'contact no': 'contact_no',
   'contact number': 'contact_no',
   'phone': 'contact_no',
@@ -43,6 +48,7 @@ export interface MappedRow {
   unique_id: string | null;
   calling_from: string | null;
   telecaller_name: string | null;
+  telecaller_phone: string | null;
   contact_no: string | null;
   contact_no_e164: string | null;
   customer_name: string | null;
@@ -88,10 +94,15 @@ export function mapHeaders(row: RawRow): RawRow {
 export function mapRow(raw: RawRow): MappedRow {
   const mapped = mapHeaders(raw);
   const phone = normalizePhone(str(mapped.contact_no));
+  const telecallerPhone = normalizePhone(str(mapped.telecaller_phone));
   return {
     unique_id: str(mapped.unique_id),
     calling_from: str(mapped.calling_from),
     telecaller_name: str(mapped.telecaller_name),
+    // E.164 so the IVR engine can dial it directly for a live transfer; falls
+    // back to the raw value so an unparseable number is still visible/fixable
+    // in the recipient record rather than silently dropped.
+    telecaller_phone: telecallerPhone.e164 || str(mapped.telecaller_phone),
     contact_no: phone.raw || str(mapped.contact_no),
     contact_no_e164: phone.e164,
     customer_name: str(mapped.customer_name),

@@ -84,6 +84,15 @@ export function RecipientsTable({
         ),
       }),
       col.accessor('product_name', { header: 'Product', cell: (c) => c.getValue() ?? '—' }),
+      col.accessor('telecaller_name', {
+        header: 'Telecaller',
+        cell: (c) => (
+          <div>
+            <div>{c.getValue() ?? '—'}</div>
+            {c.row.original.telecaller_phone && muted(c.row.original.telecaller_phone)}
+          </div>
+        ),
+      }),
       col.accessor('status', {
         header: 'Status',
         cell: (c) => <StatusBadge status={c.getValue()} />,
