@@ -4,7 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { requireUser } from '@/lib/auth';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getTelephonyProvider } from '@/lib/telephony';
-import { triggerOrderConfirmationCall } from '@/lib/telephony/ivr-engine-client';
+import {
+  triggerDeliveryConfirmationCall,
+  triggerOrderConfirmationCall,
+} from '@/lib/telephony/ivr-engine-client';
 import {
   recordOrderConfirmationCall,
   recordDeliveryConfirmationCall,
@@ -86,15 +89,20 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
       ? 'order_confirmation'
       : 'delivery_confirmation';
 
-  // A real order-confirmation call is triggered via the IVR engine and is
-  // asynchronous — it does not return a BatchResult synchronously the way
-  // the mock path below does, since the outcome isn't known yet.
-  if (callType === 'order_confirmation' && USE_REAL_EXOTEL) {
+  // A real call is triggered via the IVR engine and is asynchronous — it does
+  // not return a BatchResult synchronously the way the mock path below does,
+  // since the outcome isn't known yet. Both call types go the same way; the
+  // engine runs the matching script over the one shared Exotel flow.
+  if (USE_REAL_EXOTEL) {
     if (!r.contact_no_e164) {
       return { error: 'Recipient has no phone number', placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
     }
     try {
-      await triggerOrderConfirmationCall(r as Recipient);
+      if (callType === 'order_confirmation') {
+        await triggerOrderConfirmationCall(r as Recipient);
+      } else {
+        await triggerDeliveryConfirmationCall(r as Recipient);
+      }
     } catch (e) {
       return { error: (e as Error).message, placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
     }
@@ -147,19 +155,40 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
  * recipient out of "Delivery Confirm Pending": press 1 → confirmed (VOC sealed),
  * press 2 → issue raised, no answer → delivery unreachable. No revalidatePath so
  * the recipients list is not re-rendered — the row is updated client-side.
+ *
+ * On the real Exotel path the same three outcomes apply but arrive later, over
+ * the life of the call, so the status returned here is the recipient's current
+ * one (unchanged) rather than an outcome, and `placed` is set so the UI can
+ * say "call placed" instead of silently patching a row to the value it
+ * already had — see the branch below.
  */
 export async function runDeliveryConfirmation(
   recipientId: string,
-): Promise<{ status?: RecipientStatus; error?: string }> {
+): Promise<{ status?: RecipientStatus; placed?: boolean; error?: string }> {
   const user = await requireUser();
   const service = createServiceClient();
-  const provider = getTelephonyProvider(service);
 
   const { data: r } = await service.from('recipients').select('*').eq('id', recipientId).single();
   if (!r) return { error: 'Recipient not found' };
   if (!DELIVERY_CALLABLE.includes(r.status)) {
     return { error: 'Recipient is not awaiting delivery confirmation' };
   }
+
+  // Real call: hand off to the IVR engine, which owns call_attempts /
+  // recipients.status / the sealed VOC from here on. Nothing is written on
+  // this side, and no outcome exists yet — the row keeps its current status
+  // until the caller works through the menu (or the call never connects).
+  if (USE_REAL_EXOTEL) {
+    if (!r.contact_no_e164) return { error: 'Recipient has no phone number' };
+    try {
+      await triggerDeliveryConfirmationCall(r as Recipient);
+    } catch (e) {
+      return { error: (e as Error).message };
+    }
+    return { status: r.status, placed: true };
+  }
+
+  const provider = getTelephonyProvider(service);
 
   const { data: campaign } = await service
     .from('campaigns')

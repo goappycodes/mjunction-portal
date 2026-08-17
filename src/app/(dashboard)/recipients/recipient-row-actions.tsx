@@ -13,6 +13,19 @@ import type { RecipientStatus } from '@/lib/database.types';
 const COURIERS = ['Delhivery', 'Blue Dart', 'DTDC', 'Ekart', 'XpressBees'];
 const today = new Date().toISOString().slice(0, 10);
 
+/**
+ * Shown after a real IVR call is handed to the engine. The outcome lands on
+ * the recipient minutes later, via the engine's own writes — so this is the
+ * only acknowledgement the row can honestly give at this point.
+ */
+function CallPlacedNote() {
+  return (
+    <span className="text-xs text-[var(--muted)]">
+      Call placed — status updates when the call completes.
+    </span>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -45,6 +58,10 @@ export function RecipientRowActions({
   const [modal, setModal] = useState<null | 'dispatch' | 'deliver'>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // A real (Exotel) call resolves over minutes, not in this request — the row
+  // keeps its current status until the caller works through the menu. Without
+  // this the button would just stop spinning and nothing would visibly change.
+  const [placed, setPlaced] = useState(false);
 
   const [courier, setCourier] = useState(COURIERS[0]);
   const [awb, setAwb] = useState('');
@@ -87,19 +104,25 @@ export function RecipientRowActions({
 
   function runConfirmation() {
     setError(null);
+    setPlaced(false);
     start(async () => {
       const res = await runDeliveryConfirmation(recipientId);
       if (res.error || !res.status) setError(res.error ?? 'Call failed');
+      else if (res.placed) setPlaced(true);
       else onStatusChange(recipientId, res.status);
     });
   }
 
   function callNow() {
     setError(null);
+    setPlaced(false);
     start(async () => {
       const res = await startOrderConfirmationCall(recipientId);
       if (res.error) setError(res.error);
-      else if (status === 'imported') onStatusChange(recipientId, 'order_confirm_pending');
+      else {
+        setPlaced(true);
+        if (status === 'imported') onStatusChange(recipientId, 'order_confirm_pending');
+      }
     });
   }
 
@@ -114,6 +137,7 @@ export function RecipientRowActions({
           <Button size="sm" variant="secondary" onClick={callNow} loading={pending}>
             <PhoneOutgoing className="h-4 w-4" /> Call Now
           </Button>
+          {placed && <CallPlacedNote />}
           {error && <span className="text-xs text-[var(--danger)]">{error}</span>}
         </div>
       )}
@@ -132,6 +156,7 @@ export function RecipientRowActions({
           <Button size="sm" variant="secondary" onClick={runConfirmation} loading={pending}>
             <PhoneOutgoing className="h-4 w-4" /> Run confirmation call
           </Button>
+          {placed && <CallPlacedNote />}
           {error && <span className="text-xs text-[var(--danger)]">{error}</span>}
         </div>
       )}

@@ -70,3 +70,28 @@ export function orderConfirmationStatusFor(
   // corrected | issue_raised | transferred_to_agent -> stays put.
   return from;
 }
+
+/**
+ * Delivery-confirmation call outcome -> resulting status, the counterpart of
+ * `orderConfirmationStatusFor` for the second half of the pipeline. Mirrors
+ * `deliveryConfirmationStatusFor` in the IVR engine's `_shared/status.ts`
+ * (same name, same shape, kept in sync by hand — see the module comment).
+ *
+ * `transferred_to_agent` deliberately leaves the recipient where it is: the
+ * delivery IVR's "problem with the item" branch live-transfers the caller to
+ * their telecaller, and until that human resolves it the recipient is still
+ * awaiting delivery confirmation. The escalations queue keys off
+ * `call_attempts.outcome`, not the recipient status, so nothing is lost.
+ */
+export function deliveryConfirmationStatusFor(
+  outcome: CallOutcome,
+  from: RecipientStatus,
+): RecipientStatus {
+  if (outcome === 'confirmed') return 'confirmed';
+  if (outcome === 'issue_raised') return 'issue_raised';
+  if (outcome === 'no_answer' || outcome === 'wrong_number' || outcome === 'not_reachable') {
+    return 'delivery_unreachable';
+  }
+  // corrected | transferred_to_agent -> stays put, pending a human.
+  return from;
+}

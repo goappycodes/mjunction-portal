@@ -8,7 +8,7 @@ import type {
 } from '@/lib/database.types';
 import type { PlaceCallResult } from '@/lib/telephony/types';
 import { logEvent, transitionStatus, type ActorType } from './audit';
-import { orderConfirmationStatusFor } from './status';
+import { deliveryConfirmationStatusFor, orderConfirmationStatusFor } from './status';
 
 type DB = SupabaseClient<Database>;
 
@@ -186,11 +186,10 @@ export async function recordDeliveryConfirmationCall(
     },
   });
 
-  let to: RecipientStatus;
+  const to: RecipientStatus = deliveryConfirmationStatusFor(result.outcome, from);
   let sealedVoc: string | null = null;
 
   if (result.outcome === 'confirmed') {
-    to = 'confirmed';
     // Seal a VOC (recording exists for answered calls).
     if (attempt?.id && result.recording) {
       sealedVoc = sealedVocId();
@@ -215,10 +214,6 @@ export async function recordDeliveryConfirmationCall(
         payload: { sealed_voc_id: sealedVoc, language: result.language },
       });
     }
-  } else if (result.outcome === 'issue_raised') {
-    to = 'issue_raised';
-  } else {
-    to = 'delivery_unreachable';
   }
 
   if (to !== from) {

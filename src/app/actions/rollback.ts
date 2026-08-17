@@ -61,7 +61,13 @@ export async function rollbackOrder(input: {
     .eq('recipient_id', r.id)
     .gt('created_at', cutoff);
   if (staleVoc?.length) {
-    await service.storage.from('voc').remove(staleVoc.map((v) => v.storage_path));
+    // Only bucket-hosted recordings have an object to delete. A VOC sealed
+    // from a real Exotel call stores the provider's own URL instead — that
+    // audio lives on Exotel and is not ours to remove.
+    const bucketPaths = staleVoc
+      .map((v) => v.storage_path)
+      .filter((p) => !/^https?:\/\//i.test(p));
+    if (bucketPaths.length) await service.storage.from('voc').remove(bucketPaths);
     await supabase
       .from('voc_recordings')
       .delete()
