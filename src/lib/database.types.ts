@@ -121,6 +121,7 @@ export type CallAttempt = {
   provider_call_ref: string | null;
   /** Raw provider telephony status (queued/ringing/completed/no-answer/busy/failed/...), distinct from the business `outcome`. */
   provider_status: string | null;
+  duration_seconds: number | null;
   created_at: string;
 }
 
@@ -281,6 +282,7 @@ export interface Database {
           | 'recording_url'
           | 'provider_call_ref'
           | 'provider_status'
+          | 'duration_seconds'
         >;
         Update: Update<CallAttempt>;
         Relationships: [
