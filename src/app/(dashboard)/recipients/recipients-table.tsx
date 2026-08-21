@@ -83,7 +83,12 @@ export function RecipientsTable({
           <span className="font-mono text-xs">{c.getValue() ?? c.row.original.contact_no ?? '—'}</span>
         ),
       }),
+      col.accessor('order_id', {
+        header: 'Order ID',
+        cell: (c) => <span className="font-mono text-xs">{c.getValue() ?? '—'}</span>,
+      }),
       col.accessor('product_name', { header: 'Product', cell: (c) => c.getValue() ?? '—' }),
+      col.accessor('courier_name', { header: 'Courier', cell: (c) => c.getValue() ?? '—' }),
       col.accessor('telecaller_name', {
         header: 'Telecaller',
         cell: (c) => (

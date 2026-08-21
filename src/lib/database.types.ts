@@ -66,14 +66,24 @@ export type Campaign = {
 export type Recipient = {
   id: string;
   campaign_id: string;
-  /** Importer-provided order id — one recipient IS one order. External/customer-facing key. */
+  /** Importer-provided order id — one recipient IS one order. From the mjunction Purchase Order file, this is Order Item ID (not Order ID, which can repeat across items on the same order). External/customer-facing key. */
   unique_id: string;
+  /** mjunction Purchase Order file: Order ID (can repeat across items on the same order). */
+  order_id: string | null;
+  vendor_po_number: string | null;
+  vendor_dispatch_id: string | null;
+  order_date: string | null;
+  ordered_quantity: number | null;
+  dispatch_quantity: number | null;
+  /** Courier named on the import file itself, distinct from dispatches.courier_name (set when the order is actually dispatched). */
+  courier_name: string | null;
   calling_from: string | null;
   telecaller_name: string | null;
   /** E.164, used by connect-telecaller to live-transfer an address-issue call. */
   telecaller_phone: string | null;
   contact_no: string | null;
   contact_no_e164: string | null;
+  email: string | null;
   customer_name: string | null;
   address: string | null;
   product_name: string | null;
@@ -218,10 +228,18 @@ export interface Database {
           | 'status'
           | 'missing_address'
           | 'missing_product'
+          | 'order_id'
+          | 'vendor_po_number'
+          | 'vendor_dispatch_id'
+          | 'order_date'
+          | 'ordered_quantity'
+          | 'dispatch_quantity'
+          | 'courier_name'
           | 'calling_from'
           | 'telecaller_name'
           | 'contact_no'
           | 'contact_no_e164'
+          | 'email'
           | 'customer_name'
           | 'address'
           | 'product_name'

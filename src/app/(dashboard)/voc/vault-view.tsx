@@ -73,7 +73,7 @@ export async function VaultView({
   const CALL_LOG_COLUMNS = `
     id, recipient_id, call_type, attempt_number, outcome, provider_status, language,
     dtmf_response, started_at, ended_at, recording_url, created_at,
-    recipients!inner(customer_name, contact_no_e164, product_name, telecaller_name, unique_id, campaign_id),
+    recipients!inner(customer_name, contact_no_e164, product_name, telecaller_name, unique_id, order_id, campaign_id),
     voc_recordings(id, sealed_voc_id, duration_seconds)
   ` as const;
 
@@ -154,6 +154,7 @@ export async function VaultView({
       product_name: string | null;
       telecaller_name: string | null;
       unique_id: string;
+      order_id: string | null;
       campaign_id: string;
     };
     const voc = (c.voc_recordings as unknown as
@@ -169,6 +170,7 @@ export async function VaultView({
       data: {
         campaign: campaignMap.get(recipient.campaign_id)?.calling_from ?? '—',
         unique_id: recipient.unique_id,
+        order_id: recipient.order_id ?? '—',
         customer_name: recipient.customer_name ?? '',
         contact: recipient.contact_no_e164 ?? '',
         telecaller: recipient.telecaller_name ?? '—',

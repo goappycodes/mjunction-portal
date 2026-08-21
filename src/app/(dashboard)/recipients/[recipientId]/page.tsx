@@ -123,6 +123,7 @@ export default async function RecipientPage({
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <Field label="Contact" value={recipient.contact_no_e164 ?? recipient.contact_no} mono />
+              <Field label="Email" value={recipient.email} mono />
               <Field label="Product" value={recipient.product_name} />
               <Field label="Delivery date" value={formatDate(recipient.product_delivery_date)} />
               <Field label="Address" value={recipient.address} />
@@ -133,6 +134,28 @@ export default async function RecipientPage({
                 value={recipient.language_source ? titleCase(recipient.language_source) : '—'}
               />
               {recipient.missing_address && <Badge color="amber">Missing address</Badge>}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Order (mjunction)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <Field label="Order ID" value={recipient.order_id} mono />
+              <Field label="Order Item ID" value={recipient.unique_id} mono />
+              <Field label="Order date" value={formatDate(recipient.order_date)} />
+              <Field label="Vendor PO number" value={recipient.vendor_po_number} mono />
+              <Field label="Vendor dispatch id" value={recipient.vendor_dispatch_id} mono />
+              <Field
+                label="Quantity"
+                value={
+                  recipient.ordered_quantity != null || recipient.dispatch_quantity != null
+                    ? `${recipient.ordered_quantity ?? '—'} ordered / ${recipient.dispatch_quantity ?? '—'} dispatched`
+                    : null
+                }
+              />
+              <Field label="Courier (import)" value={recipient.courier_name} />
             </CardContent>
           </Card>
 
