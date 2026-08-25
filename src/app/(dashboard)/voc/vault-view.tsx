@@ -34,6 +34,12 @@ type VaultRow = {
 const dateCell = 'text-xs text-[var(--muted)]';
 const muted = (v: string) => <span className="text-xs text-[var(--muted)]">{v}</span>;
 
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 /**
  * VOC & Reports is a call log — one row per call_attempt, not per recipient
  * (an order can be called multiple times). Reads call_attempts directly,
@@ -72,7 +78,7 @@ export async function VaultView({
 
   const CALL_LOG_COLUMNS = `
     id, recipient_id, call_type, attempt_number, outcome, provider_status, language,
-    dtmf_response, started_at, ended_at, recording_url, created_at,
+    dtmf_response, started_at, ended_at, recording_url, duration_seconds, created_at,
     recipients!inner(customer_name, contact_no_e164, product_name, telecaller_name, unique_id, order_id, campaign_id),
     voc_recordings(id, sealed_voc_id, duration_seconds)
   ` as const;
@@ -182,7 +188,10 @@ export async function VaultView({
         started_at: formatDateTime(c.started_at),
         ended_at: formatDateTime(c.ended_at),
         sealed_voc_id: voc?.sealed_voc_id ?? '—',
-        duration: voc ? `${voc.duration_seconds ?? 0}s` : '—',
+        duration: (() => {
+          const secs = voc?.duration_seconds ?? c.duration_seconds;
+          return secs != null ? formatDuration(secs) : '—';
+        })(),
       },
     };
   });
