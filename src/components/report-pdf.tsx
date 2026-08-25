@@ -23,6 +23,7 @@ const styles = StyleSheet.create({
 
 const COLS: { key: keyof CampaignReport['rows'][number]; label: string; wide?: 'name' | 'voc' }[] = [
   { key: 'campaign', label: 'Campaign', wide: 'name' },
+  { key: 'order_id', label: 'Order ID' },
   { key: 'customer_name', label: 'Customer', wide: 'name' },
   { key: 'contact', label: 'Contact' },
   { key: 'product', label: 'Product', wide: 'name' },

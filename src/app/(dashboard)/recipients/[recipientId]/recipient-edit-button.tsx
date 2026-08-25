@@ -18,6 +18,7 @@ export function RecipientEditButton({ recipient }: { recipient: Recipient }) {
 
   const [customerName, setCustomerName] = useState(recipient.customer_name ?? '');
   const [contactNo, setContactNo] = useState(recipient.contact_no ?? '');
+  const [email, setEmail] = useState(recipient.email ?? '');
   const [address, setAddress] = useState(recipient.address ?? '');
   const [productName, setProductName] = useState(recipient.product_name ?? '');
   const [productDeliveryDate, setProductDeliveryDate] = useState(
@@ -33,6 +34,7 @@ export function RecipientEditButton({ recipient }: { recipient: Recipient }) {
         recipientId: recipient.id,
         customerName,
         contactNo,
+        email,
         address,
         productName,
         productDeliveryDate: productDeliveryDate || null,
@@ -60,9 +62,15 @@ export function RecipientEditButton({ recipient }: { recipient: Recipient }) {
             <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Contact number</Label>
-            <Input value={contactNo} onChange={(e) => setContactNo(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Contact number</Label>
+              <Input value={contactNo} onChange={(e) => setContactNo(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
           </div>
 
           <div className="space-y-1.5">

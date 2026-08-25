@@ -1,6 +1,7 @@
 export interface ReportRow {
   campaign: string;
   unique_id: string;
+  order_id: string;
   customer_name: string;
   contact: string;
   telecaller: string;

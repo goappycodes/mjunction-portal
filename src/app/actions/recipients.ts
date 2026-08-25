@@ -14,6 +14,7 @@ export interface UpdateRecipientInput {
   recipientId: string;
   customerName: string;
   contactNo: string;
+  email?: string;
   address: string;
   productName: string;
   productDeliveryDate: string | null;
@@ -56,6 +57,7 @@ export async function updateRecipient(
       customer_name: customerName,
       contact_no: phone.raw,
       contact_no_e164: phone.e164,
+      email: input.email?.trim() || null,
       address: input.address.trim() || null,
       product_name: input.productName.trim() || null,
       product_delivery_date: input.productDeliveryDate || null,

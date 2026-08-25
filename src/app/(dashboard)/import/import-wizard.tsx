@@ -106,14 +106,18 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
 
   function downloadTemplate() {
     const example = [
-      'ORD-0001',
-      'Acme Rewards',
-      'Priya Sharma',
-      '9876543211',
-      '9876543210',
+      '167594',
+      '8000010789',
+      '827270',
+      '963153',
+      '04/08/2026 12:08:13',
+      'SUN KING Solar Torch Pro',
       'Rahul Kumar',
+      '1',
+      '1',
       '221B Baker Street, Mumbai, MH 400001',
-      'Wireless Earbuds',
+      '9876543210',
+      '',
       '',
     ];
     const wb = XLSX.utils.book_new();
@@ -155,14 +159,13 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
-            Expected columns: Unique Order ID, Calling From, Tele Caller name, Tele Caller
-            Contact No, Contact No, Customer Name, Address, Product Name, and (delivery file
-            only) Product Delivery Date. Unique Order ID is required and must be distinct per
-            recipient/order — it's the id used for bulk-delivery matching and IVR calls. Tele
-            Caller Contact No is used to live-transfer a call when the recipient reports an
-            address issue. Phones are normalised to E.164 (India); duplicates within the
-            campaign are flagged. Not sure about the format? Download the template above and
-            fill it in.
+            Expected columns (mjunction Purchase Order export): Vendor Dispatch Id, Vendor PO
+            Number, Order ID, Order Item ID, Order Date, Product Name, Recipent Name, Ordered
+            Quantity, Dispatch Quantity, Address, Phone No., Email Id, Courier Name. Order Item
+            ID is required and must be distinct per recipient/order — it&apos;s the id used for
+            bulk-delivery matching and IVR calls (Order ID may repeat across items on the same
+            order). Phones are normalised to E.164 (India); duplicates within the campaign are
+            flagged. Not sure about the format? Download the template above and fill it in.
           </p>
           <input
             type="file"
@@ -192,7 +195,8 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
                 <thead className="sticky top-0 bg-[var(--muted-surface)] text-left text-[var(--muted)]">
                   <tr>
                     <th className="px-3 py-2 font-medium">#</th>
-                    <th className="px-3 py-2 font-medium">Unique Order ID</th>
+                    <th className="px-3 py-2 font-medium">Order Item ID</th>
+                    <th className="px-3 py-2 font-medium">Order ID</th>
                     <th className="px-3 py-2 font-medium">Customer</th>
                     <th className="px-3 py-2 font-medium">Phone (E.164)</th>
                     <th className="px-3 py-2 font-medium">Product</th>
@@ -213,6 +217,7 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
                         <td className="px-3 py-1.5 font-mono text-xs">
                           {r.unique_id ?? <span className="text-[var(--danger)]">missing</span>}
                         </td>
+                        <td className="px-3 py-1.5 font-mono text-xs">{r.order_id ?? '—'}</td>
                         <td className="px-3 py-1.5">{r.customer_name ?? '—'}</td>
                         <td className="px-3 py-1.5 font-mono text-xs">
                           {r.contact_no_e164 ?? <span className="text-[var(--danger)]">invalid</span>}
