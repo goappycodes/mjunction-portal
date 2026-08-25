@@ -189,8 +189,17 @@ export async function VaultView({
         ended_at: formatDateTime(c.ended_at),
         sealed_voc_id: voc?.sealed_voc_id ?? '—',
         duration: (() => {
-          const secs = voc?.duration_seconds ?? c.duration_seconds;
-          return secs != null ? formatDuration(secs) : '—';
+          const secs =
+            voc?.duration_seconds ??
+            c.duration_seconds ??
+            // Fallback: derive from the IVR-set started_at / ended_at when
+            // Exotel didn't include Duration in the status callback.
+            (c.started_at && c.ended_at
+              ? Math.round(
+                  (new Date(c.ended_at).getTime() - new Date(c.started_at).getTime()) / 1000,
+                )
+              : null);
+          return secs != null && secs > 0 ? formatDuration(secs) : '—';
         })(),
       },
     };
