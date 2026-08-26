@@ -133,13 +133,13 @@ export function RecipientActions({
         {showRetry && (
           <div className="space-y-2">
             <p className="text-sm text-[var(--muted)]">
-              Re-run the IVR call for this unreachable recipient.
+              Call this unreachable recipient back.
             </p>
             <Button
               onClick={() => start(async () => done(await retryCall(recipientId)))}
               loading={pending}
             >
-              {pending ? 'Retrying…' : 'Retry call'}
+              {pending ? 'Calling…' : 'Call back'}
             </Button>
           </div>
         )}
