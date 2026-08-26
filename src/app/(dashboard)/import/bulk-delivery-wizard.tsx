@@ -110,7 +110,7 @@ export function BulkDeliveryWizard() {
   }
 
   function downloadTemplate() {
-    const example = ['ORD-0001', 'Delivered', ''];
+    const example = ['963153', 'Delivered', ''];
     const wb = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([[...BULK_DELIVERY_COLUMNS], example]);
     XLSX.utils.book_append_sheet(wb, sheet, 'Bulk delivery');
@@ -150,8 +150,8 @@ export function BulkDeliveryWizard() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
-            Expected columns: Unique Order ID, Delivery Status, Delivery Date. Rows are matched
-            to recipients by Unique Order ID — only rows whose status reads
+            Expected columns: Order Item ID, Delivery Status, Delivery Date. Rows are matched
+            to recipients by Order Item ID — only rows whose status reads
             &ldquo;Delivered&rdquo; and whose recipient is currently dispatched get applied.
           </p>
           <input
@@ -187,7 +187,7 @@ export function BulkDeliveryWizard() {
                 <thead className="sticky top-0 bg-[var(--muted-surface)] text-left text-[var(--muted)]">
                   <tr>
                     <th className="px-3 py-2 font-medium">#</th>
-                    <th className="px-3 py-2 font-medium">Unique Order ID</th>
+                    <th className="px-3 py-2 font-medium">Order Item ID</th>
                     <th className="px-3 py-2 font-medium">Recipient</th>
                     <th className="px-3 py-2 font-medium">Status (file)</th>
                     <th className="px-3 py-2 font-medium">Delivery date</th>

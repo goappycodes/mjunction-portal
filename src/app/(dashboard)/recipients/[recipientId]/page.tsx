@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getLanguageMap, langName } from '@/lib/domain/languages';
 import { StatusBadge } from '@/components/status-badge';
+import { BackButton } from '@/components/back-button';
 import { RecipientActions } from './recipient-actions';
 import { RecipientEditButton } from './recipient-edit-button';
 import { RecipientRollback } from './recipient-rollback';
@@ -91,6 +92,7 @@ export default async function RecipientPage({
   return (
     <div className="space-y-5">
       <div>
+        <BackButton fallbackHref="/recipients" />
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">{recipient.customer_name ?? 'Unnamed'}</h1>
           <StatusBadge status={recipient.status} />
