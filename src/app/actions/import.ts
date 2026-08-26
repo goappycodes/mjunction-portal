@@ -21,18 +21,16 @@ export interface CommitResult {
 export async function commitImport(input: {
   fileName: string;
   rows: MappedRow[];
-  counts: { rowCount: number; validCount: number; errorCount: number; duplicateCount: number };
+  counts: { rowCount: number; validCount: number; errorCount: number };
 }): Promise<CommitResult> {
   const user = await requireAdmin();
   const supabase = await createClient();
 
-  // Authoritative dedupe: unique_id is globally unique.
+  // Authoritative dedupe: unique_id is globally unique. Phone numbers are not
+  // deduped — the same number can legitimately recur across orders/recipients.
   const { data: existing } = await supabase
     .from('recipients')
-    .select('contact_no_e164, unique_id');
-  const seenPhones = new Set(
-    (existing ?? []).map((r) => r.contact_no_e164).filter(Boolean) as string[],
-  );
+    .select('unique_id');
   const seenUniqueIds = new Set((existing ?? []).map((r) => r.unique_id).filter(Boolean));
 
   const toInsert: MappedRow[] = [];
@@ -42,12 +40,7 @@ export async function commitImport(input: {
       skippedDuplicates++;
       continue;
     }
-    if (row.contact_no_e164 && seenPhones.has(row.contact_no_e164)) {
-      skippedDuplicates++;
-      continue;
-    }
     seenUniqueIds.add(row.unique_id);
-    if (row.contact_no_e164) seenPhones.add(row.contact_no_e164);
     toInsert.push(row);
   }
 
@@ -58,7 +51,7 @@ export async function commitImport(input: {
       row_count: input.counts.rowCount,
       valid_count: input.counts.validCount,
       error_count: input.counts.errorCount,
-      duplicate_count: input.counts.duplicateCount + skippedDuplicates,
+      duplicate_count: skippedDuplicates,
       uploaded_by: user.id,
     })
     .select('id')

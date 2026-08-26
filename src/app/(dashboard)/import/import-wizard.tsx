@@ -56,20 +56,19 @@ export function ImportWizard() {
   function commit() {
     if (!preview) return;
     const importable: MappedRow[] = preview.rows
-      .filter((r) => r.errors.length === 0 && !r.is_duplicate)
+      .filter((r) => r.errors.length === 0)
       .map(
         ({
           rowIndex,
           missing_address,
           missing_product,
           phone_valid,
-          is_duplicate,
           is_duplicate_unique_id,
           errors,
           ...rest
         }) => {
           void rowIndex; void missing_address; void missing_product; void phone_valid;
-          void is_duplicate; void is_duplicate_unique_id; void errors;
+          void is_duplicate_unique_id; void errors;
           return rest;
         },
       );
@@ -82,7 +81,6 @@ export function ImportWizard() {
           rowCount: preview.rowCount,
           validCount: preview.validCount,
           errorCount: preview.errorCount,
-          duplicateCount: preview.duplicateCount,
         },
       });
       if (res.error) {
@@ -163,8 +161,8 @@ export function ImportWizard() {
             Quantity, Dispatch Quantity, Address, Phone No., Email Id, Courier Name. Order Item
             ID is required and must be distinct per recipient/order — it&apos;s the id used for
             bulk-delivery matching and IVR calls (Order ID may repeat across items on the same
-            order). Phones are normalised to E.164 (India); duplicates are flagged.
-            Not sure about the format? Download the template above and fill it in.
+            order). Phones are normalised to E.164 (India); the same number may recur across
+            orders/recipients. Not sure about the format? Download the template above and fill it in.
           </p>
           <input
             type="file"
@@ -185,7 +183,6 @@ export function ImportWizard() {
             <div className="flex flex-wrap gap-6 text-sm">
               <span>Total rows: <strong>{preview.rowCount}</strong></span>
               <span className="text-[var(--success)]">Valid: <strong>{preview.validCount}</strong></span>
-              <span className="text-[var(--warning)]">Duplicates: <strong>{preview.duplicateCount}</strong></span>
               <span className="text-[var(--danger)]">Errors: <strong>{preview.errorCount}</strong></span>
             </div>
 
@@ -209,7 +206,7 @@ export function ImportWizard() {
                       <tr
                         key={r.rowIndex}
                         className={`border-b border-[var(--border)] last:border-0 ${
-                          bad ? 'bg-red-50' : r.is_duplicate ? 'bg-amber-50' : ''
+                          bad ? 'bg-red-50' : ''
                         }`}
                       >
                         <td className="px-3 py-1.5 text-xs text-[var(--muted)]">{r.rowIndex}</td>
@@ -227,7 +224,6 @@ export function ImportWizard() {
                             {r.errors.map((e, i) => (
                               <Badge key={i} color="red">{e}</Badge>
                             ))}
-                            {r.is_duplicate && <Badge color="amber">duplicate</Badge>}
                             {r.missing_address && !bad && <Badge color="amber">no address</Badge>}
                             {r.missing_product && !bad && <Badge color="amber">no product</Badge>}
                           </div>
