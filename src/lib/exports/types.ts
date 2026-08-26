@@ -1,5 +1,5 @@
 export interface ReportRow {
-  campaign: string;
+  company_name: string;
   unique_id: string;
   order_id: string;
   customer_name: string;
@@ -16,9 +16,7 @@ export interface ReportRow {
   duration: string;
 }
 
-export interface CampaignReport {
-  campaignName: string;
-  orderReference: string;
+export interface Report {
   generatedAt: string;
   rows: ReportRow[];
 }

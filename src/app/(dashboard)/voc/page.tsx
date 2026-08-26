@@ -10,7 +10,6 @@ export default async function VocReportsPage({
 }: {
   searchParams: Promise<{
     view?: string;
-    campaign?: string;
     q?: string;
     status?: string;
     telecaller?: string;
@@ -26,19 +25,18 @@ export default async function VocReportsPage({
     <div className="space-y-6">
       <PageHeader
         title="VOC & Reports"
-        description="Call log and the client report, in one place. All campaigns by default — filter to narrow down."
+        description="Call log and the client report, in one place."
       />
       <VocTabs
         tab={tab}
         otherParams={{
-          campaign: sp.campaign,
           q: sp.q,
           status: sp.status,
           telecaller: sp.telecaller,
           recipientId: sp.recipientId,
         }}
       />
-      <VaultView tab={tab} campaignId={sp.campaign} sp={sp} />
+      <VaultView tab={tab} sp={sp} />
     </div>
   );
 }

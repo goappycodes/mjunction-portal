@@ -49,7 +49,7 @@ export async function resolveOrderEscalation(input: {
 
   const { data: r } = await supabase
     .from('recipients')
-    .select('id, status, campaign_id, preferred_language')
+    .select('id, status, preferred_language')
     .eq('id', input.recipientId)
     .single();
   if (!r) return { error: 'Recipient not found' };
@@ -77,7 +77,6 @@ export async function resolveOrderEscalation(input: {
 
   await supabase.from('call_attempts').insert({
     recipient_id: r.id,
-    campaign_id: r.campaign_id,
     call_type: 'order_confirmation',
     provider: 'mock',
     caller_type: 'agent',
@@ -144,7 +143,7 @@ export async function markUnreachable(input: {
 
   const { data: r } = await supabase
     .from('recipients')
-    .select('id, status, campaign_id, preferred_language')
+    .select('id, status, preferred_language')
     .eq('id', input.recipientId)
     .single();
   if (!r) return { error: 'Recipient not found' };
@@ -172,7 +171,6 @@ export async function markUnreachable(input: {
 
   await supabase.from('call_attempts').insert({
     recipient_id: r.id,
-    campaign_id: r.campaign_id,
     call_type: callType,
     attempt_number: (count ?? 0) + 1,
     provider: 'manual',
@@ -213,7 +211,7 @@ export async function resolveDeliveryIssue(input: {
 
   const { data: r } = await supabase
     .from('recipients')
-    .select('id, status, campaign_id, preferred_language')
+    .select('id, status, preferred_language')
     .eq('id', input.recipientId)
     .single();
   if (!r) return { error: 'Recipient not found' };
@@ -227,7 +225,6 @@ export async function resolveDeliveryIssue(input: {
 
   await supabase.from('call_attempts').insert({
     recipient_id: r.id,
-    campaign_id: r.campaign_id,
     call_type: 'delivery_confirmation',
     provider: 'mock',
     caller_type: 'agent',

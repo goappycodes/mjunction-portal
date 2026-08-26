@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getLanguages, langName } from '@/lib/domain/languages';
 import { RecipientsTable, type RecipientRow } from './recipients-table';
-import { EmptyState } from '@/components/ui/empty-state';
 import { Pagination } from '@/components/ui/pagination';
 import { TableFilters } from '@/components/ui/table-filters';
 import { STATUS_LABELS } from '@/lib/domain/labels';
@@ -15,42 +14,22 @@ const NO_MATCH = '00000000-0000-0000-0000-000000000000';
 /**
  * Merged Recipients + Calls view. The recipient list is the spine; each row is
  * enriched with an aggregate of that recipient's call attempts (count + most
- * recent attempt's timestamp). Duplicate columns are dropped — the
- * recipient's preferred language is shown, not the per-call language. With no
- * campaign selected, every campaign's recipients are shown with a Campaign
- * column; picking a campaign (via the filter) narrows the list.
+ * recent attempt's timestamp).
  */
 export async function RecipientCallsView({
-  campaignId,
   isAdmin,
   sp,
 }: {
-  campaignId?: string;
   isAdmin: boolean;
   sp: { status?: string; q?: string; telecaller?: string; page?: string };
 }) {
   const supabase = await createClient();
-
-  const { data: campaignRows } = await supabase
-    .from('campaigns')
-    .select('id, calling_from')
-    .order('created_at', { ascending: false });
-  const campaigns = campaignRows ?? [];
-
-  if (!campaigns.length) {
-    return <EmptyState>No campaigns yet. Create a campaign to get started.</EmptyState>;
-  }
-
-  const campaignMap = new Map(campaigns.map((c) => [c.id, c.calling_from]));
-  const activeCampaignId = campaignId && campaignMap.has(campaignId) ? campaignId : undefined;
-  const allCampaigns = !activeCampaignId;
 
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
   let query = supabase.from('recipients').select('*', { count: 'exact' });
-  if (activeCampaignId) query = query.eq('campaign_id', activeCampaignId);
   if (sp.status && sp.status in STATUS_LABELS) {
     query = query.eq('status', sp.status as RecipientStatus);
   }
@@ -61,14 +40,10 @@ export async function RecipientCallsView({
     );
   }
 
-  // Telecaller options are scoped to the active campaign (names come from the
-  // per-campaign import file) but independent of the other filters, same
-  // treatment as the campaign/status option lists.
   let telecallerQuery = supabase
     .from('recipients')
     .select('telecaller_name')
     .not('telecaller_name', 'is', null);
-  if (activeCampaignId) telecallerQuery = telecallerQuery.eq('campaign_id', activeCampaignId);
 
   const [{ data: recipients, count }, allLanguages, { data: telecallerRows }] = await Promise.all([
     query.order('updated_at', { ascending: false }).range(from, to),
@@ -85,8 +60,6 @@ export async function RecipientCallsView({
 
   const recipientIds = (recipients ?? []).map((r) => r.id);
 
-  // Only the visible page's recipients need call data. Ordered newest-first so
-  // the first attempt seen per recipient is the latest.
   const { data: calls } = await supabase
     .from('call_attempts')
     .select('recipient_id, created_at')
@@ -106,7 +79,6 @@ export async function RecipientCallsView({
     return {
       ...r,
       language_name: langName(langMap, r.preferred_language),
-      campaign_name: campaignMap.get(r.campaign_id) ?? '—',
       attempts: agg?.attempts ?? 0,
       last_call_at: agg?.last.created_at ?? null,
     };
@@ -118,19 +90,10 @@ export async function RecipientCallsView({
   return (
     <div className="space-y-4">
       <TableFilters
-        key={[activeCampaignId ?? '', sp.status ?? '', sp.telecaller ?? ''].join('|')}
+        key={[sp.status ?? '', sp.telecaller ?? ''].join('|')}
         basePath={BASE}
         searchPlaceholder="Name, phone or product"
         searchableSelects={[
-          {
-            name: 'campaign',
-            label: 'Campaign',
-            placeholder: 'All campaigns…',
-            searchPlaceholder: 'Search campaigns…',
-            allLabel: 'All campaigns',
-            width: 'w-56',
-            options: campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
-          },
           {
             name: 'status',
             label: 'Status',
@@ -152,14 +115,13 @@ export async function RecipientCallsView({
         ]}
       />
 
-      <RecipientsTable rows={rows} showCampaign={allCampaigns} isAdmin={isAdmin} />
+      <RecipientsTable rows={rows} isAdmin={isAdmin} />
 
       <Pagination
         page={page}
         totalPages={totalPages}
         hrefFor={(p) =>
           buildQuery(BASE, {
-            campaign: activeCampaignId,
             status: sp.status,
             q: sp.q,
             telecaller: sp.telecaller,

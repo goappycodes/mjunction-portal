@@ -18,7 +18,6 @@ interface QueueItem {
   id: string;
   customer_name: string | null;
   contact: string | null;
-  campaign: string | null;
   type: 'Order — address change' | 'Delivery — issue raised';
   updated_at: string;
 }
@@ -41,7 +40,7 @@ export default async function EscalationsPage({
   // because an order-phase press-2 used to leave the status untouched.
   const { data: escalated } = await supabase
     .from('recipients')
-    .select('id, customer_name, contact_no_e164, updated_at, campaigns(calling_from)')
+    .select('id, customer_name, contact_no_e164, updated_at')
     .eq('status', 'issue_raised')
     .order('updated_at', { ascending: true });
 
@@ -63,16 +62,10 @@ export default async function EscalationsPage({
     }
   }
 
-  const cname = (c: unknown) => {
-    const cc = Array.isArray(c) ? c[0] : c;
-    return (cc as { calling_from?: string } | null)?.calling_from ?? null;
-  };
-
   let items: QueueItem[] = (escalated ?? []).map((r) => ({
     id: r.id,
     customer_name: r.customer_name,
     contact: r.contact_no_e164,
-    campaign: cname(r.campaigns),
     type:
       phase.get(r.id) === 'delivery_confirmation'
         ? ('Delivery — issue raised' as const)
@@ -138,7 +131,6 @@ const columns: Column<QueueItem>[] = [
       </>
     ),
   },
-  { header: 'Campaign', cell: (it) => it.campaign ?? '—' },
   {
     header: 'Type',
     cell: (it) => <Badge color={it.type.startsWith('Order') ? 'amber' : 'red'}>{it.type}</Badge>,

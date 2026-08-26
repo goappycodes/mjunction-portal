@@ -38,7 +38,7 @@ export default async function UnreachablePage({
 
   let query = supabase
     .from('recipients')
-    .select('id, customer_name, contact_no_e164, status, updated_at, campaigns(calling_from)', {
+    .select('id, customer_name, contact_no_e164, status, updated_at', {
       count: 'exact',
     })
     .in('status', stageStatuses);
@@ -52,11 +52,6 @@ export default async function UnreachablePage({
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const cname = (c: unknown) => {
-    const cc = Array.isArray(c) ? c[0] : c;
-    return (cc as { calling_from?: string } | null)?.calling_from ?? '—';
-  };
-
   const columns: Column<NonNullable<typeof rows>[number]>[] = [
     {
       header: 'Recipient',
@@ -69,7 +64,6 @@ export default async function UnreachablePage({
         </>
       ),
     },
-    { header: 'Campaign', cell: (r) => cname(r.campaigns) },
     { header: 'Stage', cell: (r) => <StatusBadge status={r.status} /> },
     {
       header: 'Since',

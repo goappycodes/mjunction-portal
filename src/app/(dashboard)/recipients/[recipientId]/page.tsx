@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -58,7 +57,7 @@ export default async function RecipientPage({
 
   const { data: recipient } = await supabase
     .from('recipients')
-    .select('*, campaigns(id, calling_from)')
+    .select('*')
     .eq('id', recipientId)
     .single();
   if (!recipient) notFound();
@@ -80,10 +79,6 @@ export default async function RecipientPage({
       getLanguageMap(supabase),
     ]);
 
-  const campaign = Array.isArray(recipient.campaigns)
-    ? recipient.campaigns[0]
-    : recipient.campaigns;
-
   // Which half of the pipeline an escalation came from. Every press-2 now lands
   // on `issue_raised` regardless of script, so the status no longer says which
   // — the most recent call's type does. Must stay in step with
@@ -96,14 +91,6 @@ export default async function RecipientPage({
   return (
     <div className="space-y-5">
       <div>
-        {campaign && (
-          <Link
-            href={`/recipients?campaign=${campaign.id}`}
-            className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
-          >
-            ← {campaign.calling_from}
-          </Link>
-        )}
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">{recipient.customer_name ?? 'Unnamed'}</h1>
           <StatusBadge status={recipient.status} />
@@ -262,7 +249,7 @@ export default async function RecipientPage({
                         </span>
                       </div>
                       <p className="text-sm text-[var(--muted)]">
-                        {eventSummary(e.event_type, e.payload)}
+                        {eventSummary(e.event_type, (e.payload ?? {}) as Record<string, unknown>)}
                       </p>
                       <Badge color="slate">{e.actor_type}</Badge>
                     </div>

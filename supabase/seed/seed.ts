@@ -2,16 +2,16 @@
  * Minimal test seed.
  *   npm run seed
  *
- * Creates the admin/telecaller login users and exactly one campaign with one
- * recipient (+917872944208, unique_id ORD-TEST-0001, status `imported`) —
+ * Creates the admin/telecaller login users and one recipient
+ * (+917872944208, unique_id ORD-TEST-0001, status `imported`) —
  * fresh and ready to test the "Call Now" order-confirmation flow against a
- * real number. Idempotent: wipes prior demo campaigns first.
+ * real number. Idempotent: wipes prior demo recipients first.
  */
 import 'dotenv/config';
 import { config as loadEnv } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 
-import type { Campaign, Database, Recipient } from '../../src/lib/database.types';
+import type { Database, Recipient } from '../../src/lib/database.types';
 import { logEvent } from '../../src/lib/domain/audit';
 
 loadEnv({ path: '.env.local' });
@@ -49,12 +49,10 @@ async function ensureUsers(): Promise<Record<string, SeedUser>> {
     });
     let id = created.data.user?.id;
     if (!id) {
-      // Already exists — find it.
       const { data } = await db.auth.admin.listUsers({ page: 1, perPage: 200 });
       id = data.users.find((x) => x.email === u.email)?.id;
     }
     if (!id) throw new Error(`Could not ensure user ${u.email}`);
-    // Ensure profile + role (trigger sets it on create; enforce on re-run).
     await db.from('profiles').upsert({ id, full_name: u.full_name, role: u.role });
     out[u.email] = { id, role: u.role };
     console.log(`  user ${u.email} (${u.role}) -> ${id}`);
@@ -63,18 +61,11 @@ async function ensureUsers(): Promise<Record<string, SeedUser>> {
 }
 
 async function emptyVocBucket() {
-  // Best-effort recursive delete of our {campaign}/{recipient}/{file} layout.
-  const { data: campaigns } = await db.storage.from('voc').list('', { limit: 1000 });
-  for (const c of campaigns ?? []) {
-    if (!c.name) continue;
-    const { data: recips } = await db.storage.from('voc').list(c.name, { limit: 1000 });
-    const paths: string[] = [];
-    for (const r of recips ?? []) {
-      const { data: files } = await db.storage
-        .from('voc')
-        .list(`${c.name}/${r.name}`, { limit: 1000 });
-      for (const f of files ?? []) paths.push(`${c.name}/${r.name}/${f.name}`);
-    }
+  const { data: folders } = await db.storage.from('voc').list('', { limit: 1000 });
+  for (const folder of folders ?? []) {
+    if (!folder.name) continue;
+    const { data: files } = await db.storage.from('voc').list(folder.name, { limit: 1000 });
+    const paths = (files ?? []).map((f) => `${folder.name}/${f.name}`);
     if (paths.length) await db.storage.from('voc').remove(paths);
   }
 }
@@ -82,47 +73,13 @@ async function emptyVocBucket() {
 async function wipeDemo() {
   console.log('Wiping prior demo data…');
   await emptyVocBucket();
-  const { data: campaigns } = await db.from('campaigns').select('id');
-  for (const c of campaigns ?? []) {
-    // voc_recordings' FKs are intentionally non-cascading ("retained
-    // indefinitely") — clear it first or the campaign delete is blocked.
-    await db.from('voc_recordings').delete().eq('campaign_id', c.id);
-    const { error } = await db.from('campaigns').delete().eq('id', c.id);
-    if (error) console.warn(`  wipe: could not delete campaign ${c.id}: ${error.message}`);
-  }
+  await db.from('recipients').delete().eq('unique_id', TEST_UNIQUE_ID);
 }
 
-async function createCampaign(
-  adminId: string,
-  input: Partial<Campaign> & { calling_from: string },
-): Promise<Campaign> {
-  const { data, error } = await db
-    .from('campaigns')
-    .insert({
-      calling_from: input.calling_from,
-      order_reference: input.order_reference ?? null,
-      start_date: input.start_date ?? '2026-07-01',
-      end_date: input.end_date ?? '2026-08-31',
-      default_language: input.default_language ?? 'hi',
-      retry_limit: input.retry_limit ?? 2,
-      skip_menu_if_known: input.skip_menu_if_known ?? false,
-      language_config: input.language_config ?? [
-        { dtmf: '1', lang: 'hi' },
-        { dtmf: '2', lang: 'en' },
-      ],
-      created_by: adminId,
-    })
-    .select('*')
-    .single();
-  if (error) throw new Error(error.message);
-  return data as Campaign;
-}
-
-async function createTestRecipient(campaign: Campaign, adminId: string): Promise<Recipient> {
+async function createTestRecipient(adminId: string): Promise<Recipient> {
   const { data: batch } = await db
     .from('import_batches')
     .insert({
-      campaign_id: campaign.id,
       file_name: 'test_recipient_import.xlsx',
       row_count: 1,
       valid_count: 1,
@@ -133,21 +90,12 @@ async function createTestRecipient(campaign: Campaign, adminId: string): Promise
     .select('id')
     .single();
 
-  // TEST_PHONE is already a known-good E.164 literal — skip normalizePhone
-  // here rather than call it from a plain tsx/Node script context, where
-  // libphonenumber-js's metadata bundle doesn't resolve the same way it
-  // does from the Next.js app (throws "Cannot read properties of undefined
-  // (reading 'hasOwnProperty')" inside isSupportedCountry).
   const { data, error } = await db
     .from('recipients')
     .insert({
-      campaign_id: campaign.id,
       unique_id: TEST_UNIQUE_ID,
-      calling_from: campaign.calling_from,
+      company_name: 'Test Company',
       telecaller_name: 'Ravi Telecaller',
-      // Same as TEST_PHONE on purpose: there is only one real phone in this
-      // test setup, so an address-issue transfer bridges back to it — lets
-      // the connect-telecaller flow be verified end-to-end with one device.
       telecaller_phone: TEST_PHONE,
       contact_no: TEST_PHONE.replace('+91', ''),
       contact_no_e164: TEST_PHONE,
@@ -158,7 +106,7 @@ async function createTestRecipient(campaign: Campaign, adminId: string): Promise
       status: 'imported',
       missing_address: false,
       missing_product: false,
-      dedupe_key: `${campaign.id}:${TEST_PHONE}`,
+      dedupe_key: TEST_PHONE,
       import_batch_id: batch?.id ?? null,
     })
     .select('*')
@@ -171,7 +119,7 @@ async function createTestRecipient(campaign: Campaign, adminId: string): Promise
     eventType: 'imported',
     actorType: 'admin',
     actorId: adminId,
-    payload: { import_batch_id: batch?.id, campaign_id: campaign.id },
+    payload: { import_batch_id: batch?.id },
   });
   return recipient;
 }
@@ -183,20 +131,10 @@ async function main() {
 
   await wipeDemo();
 
-  console.log('Creating test campaign + recipient…');
-  const campaign = await createCampaign(adminId, {
-    calling_from: 'Test Campaign',
-    order_reference: 'ORD-TEST-2026',
-    default_language: 'hi',
-    language_config: [
-      { dtmf: '1', lang: 'hi' },
-      { dtmf: '2', lang: 'en' },
-    ],
-  });
-  const recipient = await createTestRecipient(campaign, adminId);
+  console.log('Creating test recipient…');
+  const recipient = await createTestRecipient(adminId);
 
   console.log('\n=== Seed complete ===');
-  console.log(`Campaign: ${campaign.calling_from} (${campaign.id})`);
   console.log(`Recipient: ${recipient.customer_name}, ${recipient.contact_no_e164}, unique_id=${recipient.unique_id}, status=${recipient.status}`);
   console.log('\nLogin credentials:');
   console.log('  ADMIN      admin@mjunction.test / Admin@12345');

@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
-import type { CampaignReport } from '@/lib/exports/types';
+import type { Report } from '@/lib/exports/types';
 
-const HEADERS: Record<keyof CampaignReport['rows'][number], string> = {
-  campaign: 'Campaign',
+const HEADERS: Record<keyof Report['rows'][number], string> = {
+  company_name: 'Company',
   unique_id: 'Order Item ID',
   order_id: 'Order ID',
   customer_name: 'Customer Name',
@@ -23,9 +23,8 @@ const HEADERS: Record<keyof CampaignReport['rows'][number], string> = {
   duration: 'Duration',
 };
 
-export function ReportExport({ report }: { report: CampaignReport }) {
+export function ReportExport({ report }: { report: Report }) {
   const [busy, setBusy] = useState<'xlsx' | 'pdf' | null>(null);
-  const safeName = report.campaignName.replace(/[^\w]+/g, '_');
 
   function exportExcel() {
     setBusy('xlsx');
@@ -38,7 +37,7 @@ export function ReportExport({ report }: { report: CampaignReport }) {
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Report');
-      XLSX.writeFile(wb, `${safeName}_client_report.xlsx`);
+      XLSX.writeFile(wb, `client_report.xlsx`);
     } finally {
       setBusy(null);
     }
@@ -53,7 +52,7 @@ export function ReportExport({ report }: { report: CampaignReport }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${safeName}_client_report.pdf`;
+      a.download = `client_report.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
