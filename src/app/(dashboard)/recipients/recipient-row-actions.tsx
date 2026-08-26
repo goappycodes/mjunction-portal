@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Truck, PackageCheck, PhoneOutgoing } from 'lucide-react';
 import { saveDispatch, markDelivered } from '@/app/actions/dispatch';
-import { runDeliveryConfirmation, startOrderConfirmationCall } from '@/app/actions/calls';
+import { runDeliveryConfirmation, retryCall, startOrderConfirmationCall } from '@/app/actions/calls';
 import { Button } from '@/components/ui/button';
 import { Input, Label } from '@/components/ui/primitives';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -54,7 +55,12 @@ export function RecipientRowActions({
   const canDeliver = status === 'dispatched';
   const canConfirm = status === 'delivery_confirm_pending' || status === 'delivery_unreachable';
   const canCallNow = status === 'imported' || status === 'order_confirm_pending';
+  // delivery_unreachable already gets a call button via canConfirm above —
+  // this is the order-confirmation half's equivalent, which had no action at
+  // all on this table (only the recipient detail page's "Retry call" did).
+  const canCallBack = status === 'order_unreachable';
 
+  const router = useRouter();
   const [modal, setModal] = useState<null | 'dispatch' | 'deliver'>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +132,23 @@ export function RecipientRowActions({
     });
   }
 
-  if (!canDispatch && !canDeliver && !canConfirm && !canCallNow) {
+  function callBack() {
+    setError(null);
+    setPlaced(false);
+    start(async () => {
+      const res = await retryCall(recipientId);
+      if (res.error) setError(res.error);
+      else {
+        setPlaced(true);
+        // retryCall doesn't report the recipient's new status directly (a
+        // real call resolves it minutes later via the IVR engine's own
+        // writes) — refresh so a mock call's synchronous result still shows.
+        router.refresh();
+      }
+    });
+  }
+
+  if (!canDispatch && !canDeliver && !canConfirm && !canCallNow && !canCallBack) {
     return <span className="text-xs text-[var(--muted)]">—</span>;
   }
 
@@ -136,6 +158,15 @@ export function RecipientRowActions({
         <div className="flex flex-col gap-1">
           <Button size="sm" variant="secondary" onClick={callNow} loading={pending}>
             <PhoneOutgoing className="h-4 w-4" /> Call Now
+          </Button>
+          {placed && <CallPlacedNote />}
+          {error && <span className="text-xs text-[var(--danger)]">{error}</span>}
+        </div>
+      )}
+      {canCallBack && (
+        <div className="flex flex-col gap-1">
+          <Button size="sm" variant="secondary" onClick={callBack} loading={pending}>
+            <PhoneOutgoing className="h-4 w-4" /> Call back
           </Button>
           {placed && <CallPlacedNote />}
           {error && <span className="text-xs text-[var(--danger)]">{error}</span>}

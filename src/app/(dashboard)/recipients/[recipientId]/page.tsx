@@ -109,6 +109,7 @@ export default async function RecipientPage({
               {user.role === 'admin' && <RecipientEditButton recipient={recipient} />}
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              <Field label="Company" value={recipient.company_name} />
               <Field label="Contact" value={recipient.contact_no_e164 ?? recipient.contact_no} mono />
               <Field label="Email" value={recipient.email} mono />
               <Field label="Product" value={recipient.product_name} />
