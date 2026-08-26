@@ -140,7 +140,7 @@ export const rowSchema = z.object({
 /**
  * Validate raw rows into a preview: normalises phones, flags missing
  * address/product, detects in-file duplicates (by E.164). `existingE164`
- * marks rows that collide with recipients already in the campaign.
+ * marks rows that collide with existing recipients.
  */
 export function validateRows(
   rawRows: RawRow[],

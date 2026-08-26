@@ -22,7 +22,6 @@ import type { Recipient, RecipientStatus } from '@/lib/database.types';
  */
 export interface RecipientRow extends Recipient {
   language_name: string;
-  campaign_name: string;
   attempts: number;
   last_call_at: string | null;
 }
@@ -35,11 +34,9 @@ const muted = (v: string | null) => (
 
 export function RecipientsTable({
   rows,
-  showCampaign = false,
   isAdmin = false,
 }: {
   rows: RecipientRow[];
-  showCampaign?: boolean;
   isAdmin?: boolean;
 }) {
   const router = useRouter();
@@ -65,14 +62,6 @@ export function RecipientsTable({
   // defs (and reconciling table state) on every sort/render.
   const columns = useMemo(
     () => [
-      ...(showCampaign
-        ? [
-            col.accessor('campaign_name', {
-              header: 'Campaign',
-              cell: (c) => <span className="font-medium">{c.getValue()}</span>,
-            }),
-          ]
-        : []),
       col.accessor('customer_name', {
         header: 'Customer',
         cell: (c) => <span className="font-medium">{c.getValue() ?? '—'}</span>,
@@ -131,7 +120,7 @@ export function RecipientsTable({
           ]
         : []),
     ],
-    [showCampaign, isAdmin, onStatusChange],
+    [isAdmin, onStatusChange],
   );
 
   const table = useReactTable({

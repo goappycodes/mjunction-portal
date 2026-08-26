@@ -35,21 +35,21 @@ export class MockTelephonyProvider implements TelephonyProvider {
     let languageDefaulted = false;
     let dtmfLangKey: string | null = null;
 
-    const configLangs = input.languageConfig.length
+    const configLangs = input.languageConfig?.length
       ? input.languageConfig
       : [
           { dtmf: '1', lang: 'hi' },
           { dtmf: '2', lang: 'en' },
         ];
 
-    if (input.skipMenuIfKnown && input.knownLanguage) {
+    if ((input.skipMenuIfKnown ?? false) && input.knownLanguage) {
       // Menu skipped — play directly in the stored language.
       language = input.knownLanguage;
     } else {
       // ~12% of callers give no input -> fall back to campaign default.
       const noInput = Math.random() < 0.12;
       if (noInput) {
-        language = input.defaultLanguage;
+        language = input.defaultLanguage ?? 'hi';
         languageDefaulted = true;
       } else {
         // Weighted toward the first configured language (usually Hindi).
@@ -114,7 +114,7 @@ export class MockTelephonyProvider implements TelephonyProvider {
     // ---- Recording (answered calls only; covers whole call) ----
     let recording: PlaceCallResult['recording'];
     if (answered) {
-      const storagePath = `${input.campaignId}/${input.recipientId}/${input.callType}-${providerCallRef}.wav`;
+      const storagePath = `${input.recipientId}/${input.callType}-${providerCallRef}.wav`;
       const wav = generateMockWav(durationSeconds);
       const { error } = await this.db.storage
         .from(VOC_BUCKET)

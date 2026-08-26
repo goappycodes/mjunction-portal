@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Pagination } from '@/components/ui/pagination';
 import { TableFilters } from '@/components/ui/table-filters';
-import type { CampaignReport, ReportRow } from '@/lib/exports/types';
+import type { Report, ReportRow } from '@/lib/exports/types';
 import type { CallOutcome, CallType } from '@/lib/database.types';
 import type { VocTab } from './voc-tabs';
 
@@ -41,73 +41,42 @@ function formatDuration(seconds: number): string {
 }
 
 /**
- * VOC & Reports is a call log — one row per call_attempt, not per recipient
- * (an order can be called multiple times). Reads call_attempts directly,
- * joined with the recipient/product/telecaller context and any sealed VOC
- * recording for that specific attempt. Split into two tabs by call_type
- * (`address` = order_confirmation, `delivery` = delivery_confirmation).
+ * VOC & Reports is a call log — one row per call_attempt, not per recipient.
+ * Split into two tabs by call_type.
  */
 export async function VaultView({
   tab,
-  campaignId,
   sp,
 }: {
   tab: VocTab;
-  campaignId?: string;
   sp: { q?: string; status?: string; telecaller?: string; recipientId?: string; page?: string };
 }) {
   const supabase = await createClient();
   const callType = TAB_CALL_TYPE[tab];
 
-  // Campaigns power the filter dropdown, the per-row label and validation of
-  // the incoming ?campaign= param — fetched first (tiny table) so everything
-  // below can key off a trusted id.
-  const { data: campaignRows } = await supabase
-    .from('campaigns')
-    .select('id, calling_from, order_reference')
-    .order('created_at', { ascending: false });
-  const campaigns = campaignRows ?? [];
-
-  if (!campaigns.length) {
-    return <EmptyState>No campaigns yet. Create a campaign to get started.</EmptyState>;
-  }
-
-  const campaignMap = new Map(campaigns.map((c) => [c.id, c]));
-  const activeCampaignId = campaignId && campaignMap.has(campaignId) ? campaignId : undefined;
-  const allCampaigns = !activeCampaignId;
-
   const CALL_LOG_COLUMNS = `
     id, recipient_id, call_type, attempt_number, outcome, provider_status, language,
     dtmf_response, started_at, ended_at, recording_url, duration_seconds, created_at,
-    recipients!inner(customer_name, contact_no_e164, product_name, telecaller_name, unique_id, order_id, campaign_id),
+    recipients!inner(customer_name, contact_no_e164, product_name, telecaller_name, unique_id, order_id, company_name),
     voc_recordings(id, sealed_voc_id, duration_seconds)
   ` as const;
 
   let callsQuery = supabase.from('call_attempts').select(CALL_LOG_COLUMNS).eq('call_type', callType);
-  if (activeCampaignId) callsQuery = callsQuery.eq('recipients.campaign_id', activeCampaignId);
   if (sp.status && sp.status in OUTCOME_LABELS) {
     callsQuery = callsQuery.eq('outcome', sp.status as CallOutcome);
   }
   if (sp.telecaller) callsQuery = callsQuery.eq('recipients.telecaller_name', sp.telecaller);
 
-  // Telecaller options are scoped to the active campaign + tab (telecaller
-  // names come from the per-campaign import file) but independent of the
-  // other filters, same treatment as the campaign/status option lists.
   let telecallerQuery = supabase
     .from('call_attempts')
-    .select('recipients!inner(telecaller_name, campaign_id)')
+    .select('recipients!inner(telecaller_name)')
     .eq('call_type', callType)
     .not('recipients.telecaller_name', 'is', null);
-  if (activeCampaignId) telecallerQuery = telecallerQuery.eq('recipients.campaign_id', activeCampaignId);
 
-  // Unique Order ID dropdown options — same campaign-scoped, other-filters-
-  // independent treatment. Labelled by name + contact so it's searchable by
-  // more than just the raw id.
   let recipientOptionsQuery = supabase
     .from('call_attempts')
-    .select('recipients!inner(unique_id, customer_name, contact_no_e164, campaign_id)')
+    .select('recipients!inner(unique_id, customer_name, contact_no_e164)')
     .eq('call_type', callType);
-  if (activeCampaignId) recipientOptionsQuery = recipientOptionsQuery.eq('recipients.campaign_id', activeCampaignId);
 
   const [{ data: calls }, allLanguages, { data: telecallerRows }, { data: recipientOptionRows }] =
     await Promise.all([
@@ -117,6 +86,16 @@ export async function VaultView({
       recipientOptionsQuery,
     ]);
 
+  if (!calls || calls.length === 0) {
+    const emptyMsg =
+      callType === 'order_confirmation'
+        ? 'No order confirmation calls yet.'
+        : 'No delivery confirmation calls yet.';
+    if (!sp.status && !sp.telecaller && !sp.q && !sp.recipientId) {
+      return <EmptyState>{emptyMsg}</EmptyState>;
+    }
+  }
+
   const telecallers = Array.from(
     new Set(
       (telecallerRows ?? [])
@@ -125,9 +104,6 @@ export async function VaultView({
     ),
   ).sort();
 
-  // Labelled by the importer-provided Unique Order ID (never ambiguous,
-  // unlike customer name) — name/contact are searchable context in the
-  // `sub` line. Deduped since the same recipient can appear on many rows.
   const seenUniqueIds = new Set<string>();
   const recipientOptions = (recipientOptionRows ?? [])
     .map(
@@ -161,7 +137,7 @@ export async function VaultView({
       telecaller_name: string | null;
       unique_id: string;
       order_id: string | null;
-      campaign_id: string;
+      company_name: string | null;
     };
     const voc = (c.voc_recordings as unknown as
       | { id: string; sealed_voc_id: string; duration_seconds: number | null }[]
@@ -174,7 +150,7 @@ export async function VaultView({
       providerStatus: c.provider_status,
       recordingUrl: c.recording_url,
       data: {
-        campaign: campaignMap.get(recipient.campaign_id)?.calling_from ?? '—',
+        company_name: recipient.company_name ?? '—',
         unique_id: recipient.unique_id,
         order_id: recipient.order_id ?? '—',
         customer_name: recipient.customer_name ?? '',
@@ -192,8 +168,6 @@ export async function VaultView({
           const secs =
             voc?.duration_seconds ??
             c.duration_seconds ??
-            // Fallback: derive from the IVR-set started_at / ended_at when
-            // Exotel didn't include Duration in the status callback.
             (c.started_at && c.ended_at
               ? Math.round(
                   (new Date(c.ended_at).getTime() - new Date(c.started_at).getTime()) / 1000,
@@ -205,8 +179,6 @@ export async function VaultView({
     };
   });
 
-  // Free-text search spans name, contact, product and sealed VOC id so the
-  // vault's old "search by sealed VOC id" behaviour survives the merge.
   if (sp.q) {
     const needle = sp.q.toLowerCase();
     rows = rows.filter((r) =>
@@ -216,19 +188,11 @@ export async function VaultView({
     );
   }
 
-  // Dedicated Unique Order ID lookup — separate from the general search box,
-  // picked from the searchable dropdown below (so this is always an exact id).
   if (sp.recipientId) {
     rows = rows.filter((r) => r.data.unique_id === sp.recipientId);
   }
 
-  const selectedCampaign = activeCampaignId ? campaignMap.get(activeCampaignId) : undefined;
-
-  // The export always contains every row matching the current filters; the
-  // table below is paginated 15 per page.
-  const report: CampaignReport = {
-    campaignName: selectedCampaign?.calling_from ?? 'All campaigns',
-    orderReference: selectedCampaign?.order_reference ?? '',
+  const report: Report = {
     generatedAt: formatDate(new Date().toISOString()),
     rows: rows.map((r) => r.data),
   };
@@ -239,9 +203,10 @@ export async function VaultView({
   const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const columns: Column<VaultRow>[] = [
-    ...(allCampaigns
-      ? [{ header: 'Campaign', cell: (r: VaultRow) => r.data.campaign }]
-      : []),
+    {
+      header: 'Company',
+      cell: (r) => r.data.company_name || '—',
+    },
     {
       header: 'Recipient',
       cell: (r) => (
@@ -296,20 +261,11 @@ export async function VaultView({
   return (
     <div className="space-y-4">
       <TableFilters
-        key={[tab, activeCampaignId ?? '', sp.status ?? '', sp.telecaller ?? '', sp.recipientId ?? ''].join('|')}
+        key={[tab, sp.status ?? '', sp.telecaller ?? '', sp.recipientId ?? ''].join('|')}
         basePath={BASE}
         view={tab}
         searchPlaceholder="Search by name, contact, product or sealed VOC id"
         searchableSelects={[
-          {
-            name: 'campaign',
-            label: 'Campaign',
-            placeholder: 'All campaigns…',
-            searchPlaceholder: 'Search campaigns…',
-            allLabel: 'All campaigns',
-            width: 'w-56',
-            options: campaigns.map((c) => ({ value: c.id, label: c.calling_from })),
-          },
           {
             name: 'status',
             label: 'Status',
@@ -358,7 +314,6 @@ export async function VaultView({
         hrefFor={(p) =>
           buildQuery(BASE, {
             view: tab,
-            campaign: activeCampaignId,
             q: sp.q,
             status: sp.status,
             telecaller: sp.telecaller,

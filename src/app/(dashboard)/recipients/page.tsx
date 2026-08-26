@@ -8,7 +8,6 @@ export default async function RecipientsHubPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    campaign?: string;
     q?: string;
     status?: string;
     telecaller?: string;
@@ -24,7 +23,7 @@ export default async function RecipientsHubPage({
         title="Recipients"
         description="Recipient pipeline, calls and dispatch — all in one place."
       />
-      <RecipientCallsView campaignId={sp.campaign} isAdmin={user.role === 'admin'} sp={sp} />
+      <RecipientCallsView isAdmin={user.role === 'admin'} sp={sp} />
     </div>
   );
 }

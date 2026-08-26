@@ -74,7 +74,7 @@ export function mapDeliveryRow(raw: RawRow): MappedDeliveryRow {
  * parseable) — no DB access, mirrors validateRows() in
  * lib/domain/import.ts. Matching a row to a recipient (and whether that
  * recipient is actually dispatched) happens server-side against the DB,
- * since it needs the campaign's data.
+ * since it needs the DB.
  */
 export function validateDeliveryRows(rawRows: RawRow[]): DeliveryPreview {
   const rows: ValidatedDeliveryRow[] = [];

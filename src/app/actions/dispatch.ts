@@ -30,7 +30,7 @@ export async function saveDispatch(input: {
   const supabase = await createClient();
   const { data: r } = await supabase
     .from('recipients')
-    .select('id, status, campaign_id')
+    .select('id, status')
     .eq('id', input.recipientId)
     .single();
   if (!r) return { error: 'Recipient not found' };
@@ -85,7 +85,7 @@ export async function markDelivered(input: {
   const supabase = await createClient();
   const { data: r } = await supabase
     .from('recipients')
-    .select('id, status, campaign_id')
+    .select('id, status')
     .eq('id', input.recipientId)
     .single();
   if (!r) return { error: 'Recipient not found' };
@@ -139,11 +139,10 @@ export interface BulkDeliveryPreview {
 
 /**
  * Match each format-validated row (from lib/domain/bulk-delivery.ts) to a
- * dispatched recipient in the given campaign by Unique Order ID. Read-only —
+ * dispatched recipient by Unique Order ID. Read-only —
  * used to render the preview table before the admin commits.
  */
 export async function previewBulkDelivery(input: {
-  campaignId: string;
   rows: ValidatedDeliveryRow[];
 }): Promise<BulkDeliveryPreview> {
   await requireAdmin();
@@ -156,7 +155,6 @@ export async function previewBulkDelivery(input: {
     ? await supabase
         .from('recipients')
         .select('id, status, customer_name, unique_id')
-        .eq('campaign_id', input.campaignId)
         .in('unique_id', uniqueIds)
     : { data: [] };
   const byUniqueId = new Map((recipients ?? []).map((r) => [r.unique_id, r]));

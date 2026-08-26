@@ -1,68 +1,74 @@
 import { requireAdmin } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
 import { ImportWizard } from './import-wizard';
+import { UpdateWizard } from './update-wizard';
 import { BulkDeliveryWizard } from './bulk-delivery-wizard';
-import { ImportModeTabs, type ImportMode } from './import-mode-tabs';
-import { CampaignSelector, type CampaignOption } from '@/components/campaign-selector';
 import { PageHeader } from '@/components/page-header';
-import { EmptyState } from '@/components/ui/empty-state';
 
 export const dynamic = 'force-dynamic';
+
+type ImportType = 'recipients' | 'update' | 'delivery';
+
+const TABS: { key: ImportType; label: string; description: string }[] = [
+  {
+    key: 'recipients',
+    label: 'Import Recipients',
+    description: 'Add new recipients from a Purchase Order export file.',
+  },
+  {
+    key: 'update',
+    label: 'Update Recipients',
+    description: 'Update company names for existing recipients by Order Item ID.',
+  },
+  {
+    key: 'delivery',
+    label: 'Bulk Delivery',
+    description: 'Mark recipients as delivered in bulk from a dispatch file.',
+  },
+];
 
 export default async function ImportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ campaign?: string; mode?: string }>;
+  searchParams: Promise<{ type?: string }>;
 }) {
   const sp = await searchParams;
   await requireAdmin();
-  const supabase = await createClient();
 
-  // Latest campaigns first for the selector.
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('id, calling_from, order_reference, created_at')
-    .order('created_at', { ascending: false });
-
-  const options: CampaignOption[] = (campaigns ?? []).map((c) => ({
-    id: c.id,
-    label: c.calling_from,
-    sub: c.order_reference,
-  }));
-
-  const selected =
-    sp.campaign && options.some((o) => o.id === sp.campaign) ? sp.campaign : undefined;
-  const mode: ImportMode = sp.mode === 'delivery' ? 'delivery' : 'import';
+  const activeType: ImportType =
+    sp.type === 'update' ? 'update' : sp.type === 'delivery' ? 'delivery' : 'recipients';
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Import"
-        description="Import a recipient file, or bulk mark recipients as delivered — both Excel / CSV, both campaign-scoped."
+        description="Import recipient data or update existing records."
       />
 
-      <ImportModeTabs mode={mode} campaignId={selected} />
+      {/* Import type tabs */}
+      <div className="flex gap-1 rounded-lg bg-[var(--muted-surface)] p-1">
+        {TABS.map((tab) => (
+          <a
+            key={tab.key}
+            href={`/import?type=${tab.key}`}
+            className={[
+              'flex-1 rounded-md px-4 py-2 text-center text-sm font-medium transition-colors',
+              activeType === tab.key
+                ? 'bg-[var(--card)] text-[var(--fg)] shadow-sm'
+                : 'text-[var(--muted)] hover:text-[var(--fg)]',
+            ].join(' ')}
+          >
+            {tab.label}
+          </a>
+        ))}
+      </div>
 
-      <CampaignSelector
-        campaigns={options}
-        selectedId={selected}
-        basePath="/import"
-        preserve={{ mode }}
-      />
+      <p className="text-sm text-[var(--muted)]">
+        {TABS.find((t) => t.key === activeType)?.description}
+      </p>
 
-      {selected ? (
-        mode === 'delivery' ? (
-          <BulkDeliveryWizard key={selected} campaignId={selected} />
-        ) : (
-          <ImportWizard key={selected} campaignId={selected} />
-        )
-      ) : (
-        <EmptyState>
-          {options.length
-            ? 'Select a campaign above to get started.'
-            : 'No campaigns yet. Create a campaign first, then import recipients.'}
-        </EmptyState>
-      )}
+      {activeType === 'recipients' && <ImportWizard />}
+      {activeType === 'update' && <UpdateWizard />}
+      {activeType === 'delivery' && <BulkDeliveryWizard />}
     </div>
   );
 }

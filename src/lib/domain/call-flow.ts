@@ -1,6 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
-  Campaign,
   Database,
   LanguageSource,
   Recipient,
@@ -45,7 +44,6 @@ interface RecordContext {
 export async function recordOrderConfirmationCall(
   db: DB,
   recipient: Recipient,
-  campaign: Campaign,
   result: PlaceCallResult,
   attemptNumber: number,
   ctx: RecordContext,
@@ -67,7 +65,6 @@ export async function recordOrderConfirmationCall(
     .from('call_attempts')
     .insert({
       recipient_id: recipient.id,
-      campaign_id: campaign.id,
       call_type: 'order_confirmation',
       attempt_number: attemptNumber,
       provider: process.env.TELEPHONY_PROVIDER ?? 'mock',
@@ -133,7 +130,6 @@ export async function recordOrderConfirmationCall(
 export async function recordDeliveryConfirmationCall(
   db: DB,
   recipient: Recipient,
-  campaign: Campaign,
   result: PlaceCallResult,
   attemptNumber: number,
   ctx: RecordContext,
@@ -144,7 +140,6 @@ export async function recordDeliveryConfirmationCall(
     .from('call_attempts')
     .insert({
       recipient_id: recipient.id,
-      campaign_id: campaign.id,
       call_type: 'delivery_confirmation',
       attempt_number: attemptNumber,
       provider: process.env.TELEPHONY_PROVIDER ?? 'mock',
@@ -196,7 +191,6 @@ export async function recordDeliveryConfirmationCall(
       await db.from('voc_recordings').insert({
         sealed_voc_id: sealedVoc,
         recipient_id: recipient.id,
-        campaign_id: campaign.id,
         call_attempt_id: attempt.id,
         call_type: 'delivery_confirmation',
         product_name: recipient.product_name,

@@ -24,7 +24,7 @@ type Step = 'upload' | 'preview' | 'done';
 const MATCH_LABEL: Record<DeliveryMatch, string> = {
   matched: 'Will mark delivered',
   not_dispatched: 'Not in dispatched state',
-  not_found: 'No match in campaign',
+  not_found: 'Not found',
   skipped_status: 'Status ≠ Delivered',
   format_error: 'Row error',
 };
@@ -37,7 +37,7 @@ const MATCH_COLOR: Record<DeliveryMatch, 'green' | 'amber' | 'red' | 'slate'> = 
   format_error: 'red',
 };
 
-export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
+export function BulkDeliveryWizard() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('upload');
   const [fileName, setFileName] = useState('');
@@ -72,7 +72,7 @@ export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
 
       const formatted = validateDeliveryRows(raw);
       start(async () => {
-        const preview = await previewBulkDelivery({ campaignId, rows: formatted.rows });
+        const preview = await previewBulkDelivery({ rows: formatted.rows });
         setRows(preview.rows);
         setCounts(preview.counts);
         setStep('preview');
@@ -130,7 +130,7 @@ export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
             <Button variant="secondary" onClick={reset}>
               Upload another file
             </Button>
-            <Button onClick={() => router.push(`/recipients?campaign=${campaignId}`)}>
+            <Button onClick={() => router.push('/recipients')}>
               View recipients
             </Button>
           </div>
@@ -151,7 +151,7 @@ export function BulkDeliveryWizard({ campaignId }: { campaignId: string }) {
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
             Expected columns: Unique Order ID, Delivery Status, Delivery Date. Rows are matched
-            to recipients in this campaign by Unique Order ID — only rows whose status reads
+            to recipients by Unique Order ID — only rows whose status reads
             &ldquo;Delivered&rdquo; and whose recipient is currently dispatched get applied.
           </p>
           <input

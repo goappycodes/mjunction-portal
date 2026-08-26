@@ -51,7 +51,7 @@ export async function rollbackOrder(input: {
       ? (events ?? []).find((e) => e.event_type === 'imported')
       : [...(events ?? [])]
           .reverse()
-          .find((e) => e.event_type === 'status_change' && e.payload?.to === input.targetStatus);
+          .find((e) => e.event_type === 'status_change' && (e.payload as Record<string, unknown>)?.to === input.targetStatus);
   const cutoff = cutoffEvent?.created_at ?? r.created_at;
 
   const service = createServiceClient();

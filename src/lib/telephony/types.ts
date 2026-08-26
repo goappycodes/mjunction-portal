@@ -6,12 +6,11 @@ import type { CallOutcome, CallType, LanguageConfigEntry } from '@/lib/database.
 
 export interface PlaceCallInput {
   recipientId: string;
-  campaignId: string;
   callType: CallType;
-  languageConfig: LanguageConfigEntry[];
-  defaultLanguage: string;
-  retryLimit: number;
-  skipMenuIfKnown: boolean;
+  languageConfig?: LanguageConfigEntry[];
+  defaultLanguage?: string;
+  retryLimit?: number;
+  skipMenuIfKnown?: boolean;
   knownLanguage?: string | null;
   /** Context used to build a realistic mock recording / metadata. */
   productName?: string | null;

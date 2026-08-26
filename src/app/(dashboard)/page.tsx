@@ -1,39 +1,22 @@
-import Link from 'next/link';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { getDailyActivity, getMetrics } from '@/lib/domain/metrics';
 import { StatCard } from '@/components/stat-card';
 import { StackedBarChartCard } from '@/components/charts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/primitives';
-import { FilterBar, FilterField } from '@/components/ui/filter-bar';
-import { FormSearchableSelect } from '@/components/ui/form-searchable-select';
 import { PageHeader } from '@/components/page-header';
 
 export const dynamic = 'force-dynamic';
 
-export default async function OverviewPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ campaign?: string }>;
-}) {
-  const sp = await searchParams;
+export default async function OverviewPage() {
   await requireUser();
   const supabase = await createClient();
 
-  const { data: allCampaigns } = await supabase
-    .from('campaigns')
-    .select('id, calling_from')
-    .order('calling_from');
-  const scoped = sp.campaign && allCampaigns?.some((c) => c.id === sp.campaign) ? sp.campaign : undefined;
-
   const [metrics, activity] = await Promise.all([
-    getMetrics(supabase, scoped),
-    getDailyActivity(supabase, scoped),
+    getMetrics(supabase),
+    getDailyActivity(supabase),
   ]);
-  const campaignsRes = { count: allCampaigns?.length ?? 0 };
 
-  // Day labels are short (`17 Aug`) because 14 of them share one axis; the
-  // full date is still in the tooltip via the series values.
   const activityData = activity.days.map((d) => ({
     label: new Date(`${d.date}T00:00:00`).toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -50,36 +33,10 @@ export default async function OverviewPage({
     <div className="space-y-6">
       <PageHeader
         title="Overview"
-        description={
-          scoped
-            ? 'Confirmation rates and daily call activity for the selected campaign.'
-            : 'Cross-campaign confirmation rates and daily call activity.'
-        }
-        actions={
-          <Link
-            href="/campaigns"
-            className="text-sm font-medium text-[var(--primary)] hover:underline"
-          >
-            View campaigns →
-          </Link>
-        }
+        description="Confirmation rates and daily call activity."
       />
 
-      <FilterBar action="/" resetHref="/">
-        <FilterField label="Campaign scope">
-          <FormSearchableSelect
-            name="campaign"
-            defaultValue={scoped ?? ''}
-            allLabel="All campaigns"
-            searchPlaceholder="Search campaigns…"
-            className="w-64"
-            options={(allCampaigns ?? []).map((c) => ({ value: c.id, label: c.calling_from }))}
-          />
-        </FilterField>
-      </FilterBar>
-
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Campaigns" value={campaignsRes.count ?? 0} accent="indigo" />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         <StatCard label="Recipients" value={metrics.total} />
         <StatCard label="Order-confirm rate" value={`${metrics.orderConfirmRate}%`} accent="green" />
         <StatCard label="Delivery rate" value={`${metrics.deliveryRate}%`} accent="green" />
@@ -92,9 +49,7 @@ export default async function OverviewPage({
           <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
             Today&apos;s activity
           </h2>
-          <p className="text-xs text-[var(--muted)]">
-            Calls placed today (IST){scoped ? ' · selected campaign' : ' · all campaigns'}
-          </p>
+          <p className="text-xs text-[var(--muted)]">Calls placed today (IST)</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">

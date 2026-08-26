@@ -7,7 +7,7 @@ import {
   View,
   StyleSheet,
 } from '@react-pdf/renderer';
-import type { CampaignReport } from '@/lib/exports/types';
+import type { Report } from '@/lib/exports/types';
 
 const styles = StyleSheet.create({
   page: { padding: 28, fontSize: 8, fontFamily: 'Helvetica' },
@@ -21,8 +21,8 @@ const styles = StyleSheet.create({
   headerText: { fontFamily: 'Helvetica-Bold' },
 });
 
-const COLS: { key: keyof CampaignReport['rows'][number]; label: string; wide?: 'name' | 'voc' }[] = [
-  { key: 'campaign', label: 'Campaign', wide: 'name' },
+const COLS: { key: keyof Report['rows'][number]; label: string; wide?: 'name' | 'voc' }[] = [
+  { key: 'company_name', label: 'Company', wide: 'name' },
   { key: 'order_id', label: 'Order ID' },
   { key: 'customer_name', label: 'Customer', wide: 'name' },
   { key: 'contact', label: 'Contact' },
@@ -36,13 +36,13 @@ const COLS: { key: keyof CampaignReport['rows'][number]; label: string; wide?: '
   { key: 'duration', label: 'Duration' },
 ];
 
-export function ReportDoc({ report }: { report: CampaignReport }) {
+export function ReportDoc({ report }: { report: Report }) {
   return (
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
-        <Text style={styles.title}>{report.campaignName} — Client Report</Text>
+        <Text style={styles.title}>Client Report</Text>
         <Text style={styles.meta}>
-          {report.orderReference} · {report.rows.length} calls · Generated {report.generatedAt}
+          {report.rows.length} calls · Generated {report.generatedAt}
         </Text>
 
         <View style={styles.headerRow}>

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  Megaphone,
   PhoneForwarded,
   PhoneMissed,
   Users,
@@ -35,7 +34,6 @@ const GROUPS: NavGroup[] = [
     heading: 'Overview',
     items: [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
     ],
   },
   {

@@ -6,8 +6,6 @@ export default function ImportLoading() {
       <SkeletonHeader />
       {/* Mode tabs */}
       <Skeleton className="h-9 w-72 rounded-lg" />
-      {/* Campaign selector */}
-      <Skeleton className="h-9 w-full max-w-sm" />
       {/* Wizard card */}
       <div className="space-y-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <div className="flex items-start justify-between gap-3">

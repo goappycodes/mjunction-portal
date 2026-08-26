@@ -3,7 +3,7 @@ import type { CallOutcome, Database, RecipientStatus } from '@/lib/database.type
 
 type DB = SupabaseClient<Database>;
 
-export interface CampaignMetrics {
+export interface Metrics {
   total: number;
   statusCounts: Record<string, number>;
   languageCounts: Record<string, number>;
@@ -38,12 +38,10 @@ function pct(n: number, d: number): number {
   return d === 0 ? 0 : Math.round((n / d) * 1000) / 10;
 }
 
-/** Compute dashboard metrics for a campaign (or all campaigns if id omitted). */
-export async function getMetrics(db: DB, campaignId?: string): Promise<CampaignMetrics> {
-  let q = db.from('recipients').select('status, preferred_language');
-  if (campaignId) q = q.eq('campaign_id', campaignId);
-  let vocQ = db.from('voc_recordings').select('*', { count: 'exact', head: true });
-  if (campaignId) vocQ = vocQ.eq('campaign_id', campaignId);
+/** Compute dashboard metrics across all recipients. */
+export async function getMetrics(db: DB): Promise<Metrics> {
+  const q = db.from('recipients').select('status, preferred_language');
+  const vocQ = db.from('voc_recordings').select('*', { count: 'exact', head: true });
 
   // Run both round-trips in parallel.
   const [{ data: recips }, { count: vocSealed }] = await Promise.all([q, vocQ]);
@@ -172,13 +170,12 @@ function dateWindow(days: number): string[] {
 }
 
 /**
- * Per-day call activity for the last `days` days (IST), optionally scoped to
- * one campaign. Counts every call placed in the window, bucketed by the day it
+ * Per-day call activity for the last `days` days (IST). Counts every call
+ * placed in the window, bucketed by the day it
  * was created and split by call type and outcome.
  */
 export async function getDailyActivity(
   db: DB,
-  campaignId?: string,
   days = 14,
 ): Promise<ActivitySummary> {
   const window = dateWindow(days);
@@ -190,11 +187,10 @@ export async function getDailyActivity(
   // only keys present in `window` are counted.
   const since = new Date(Date.now() - days * 86_400_000).toISOString();
 
-  let q = db
+  const q = db
     .from('call_attempts')
     .select('created_at, call_type, outcome')
     .gte('created_at', since);
-  if (campaignId) q = q.eq('campaign_id', campaignId);
 
   const { data } = await q;
 

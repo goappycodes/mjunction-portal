@@ -22,7 +22,7 @@ export async function logEvent(
     event_type: params.eventType,
     actor_type: params.actorType,
     actor_id: params.actorId ?? null,
-    payload: params.payload ?? {},
+    payload: (params.payload ?? {}) as unknown as import('@/lib/database.types').Json,
   });
 }
 

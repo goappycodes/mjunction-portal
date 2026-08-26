@@ -1,400 +1,803 @@
-// Hand-maintained to match supabase/migrations. Keep in sync with the SQL.
+﻿export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export type UserRole = 'admin' | 'telecaller';
-
-export type RecipientStatus =
-  | 'imported'
-  | 'order_confirm_pending'
-  | 'address_confirmed'
-  | 'address_corrected'
-  | 'order_unreachable'
-  | 'dispatched'
-  | 'delivered'
-  | 'delivery_confirm_pending'
-  | 'confirmed'
-  | 'issue_raised'
-  | 'delivery_unreachable'
-  | 'closed';
-
-export type CallType = 'order_confirmation' | 'delivery_confirmation';
-export type CallerType = 'ivr' | 'agent';
-export type CallOutcome =
-  | 'confirmed'
-  | 'corrected'
-  | 'no_answer'
-  | 'wrong_number'
-  | 'issue_raised'
-  | 'transferred_to_agent'
-  | 'not_reachable';
-export type LanguageSource =
-  | 'recipient_selected'
-  | 'defaulted'
-  | 'region_inferred'
-  | 'agent_set';
-
-export type LanguageConfigEntry = { dtmf: string; lang: string };
-
-type Timestamps = { created_at: string };
-
-export type Profile = {
-  id: string;
-  full_name: string | null;
-  role: UserRole;
-  created_at: string;
-}
-
-export type Language = {
-  code: string;
-  display_name: string;
-  is_active: boolean;
-}
-
-export type Campaign = {
-  id: string;
-  calling_from: string;
-  order_reference: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  default_language: string;
-  retry_limit: number;
-  skip_menu_if_known: boolean;
-  language_config: LanguageConfigEntry[];
-  created_by: string | null;
-  created_at: string;
-}
-
-export type Recipient = {
-  id: string;
-  campaign_id: string;
-  /** Importer-provided order id — one recipient IS one order. From the mjunction Purchase Order file, this is Order Item ID (not Order ID, which can repeat across items on the same order). External/customer-facing key. */
-  unique_id: string;
-  /** mjunction Purchase Order file: Order ID (can repeat across items on the same order). */
-  order_id: string | null;
-  vendor_po_number: string | null;
-  vendor_dispatch_id: string | null;
-  order_date: string | null;
-  ordered_quantity: number | null;
-  dispatch_quantity: number | null;
-  /** Courier named on the import file itself, distinct from dispatches.courier_name (set when the order is actually dispatched). */
-  courier_name: string | null;
-  calling_from: string | null;
-  telecaller_name: string | null;
-  /** E.164, used by connect-telecaller to live-transfer an address-issue call. */
-  telecaller_phone: string | null;
-  contact_no: string | null;
-  contact_no_e164: string | null;
-  email: string | null;
-  customer_name: string | null;
-  address: string | null;
-  product_name: string | null;
-  product_delivery_date: string | null;
-  status: RecipientStatus;
-  preferred_language: string | null;
-  language_source: LanguageSource | null;
-  missing_address: boolean;
-  missing_product: boolean;
-  dedupe_key: string | null;
-  import_batch_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export type ImportBatch = {
-  id: string;
-  campaign_id: string | null;
-  file_name: string | null;
-  row_count: number | null;
-  valid_count: number | null;
-  error_count: number | null;
-  duplicate_count: number | null;
-  uploaded_by: string | null;
-  created_at: string;
-}
-
-export type CallAttempt = {
-  id: string;
-  recipient_id: string;
-  campaign_id: string;
-  call_type: CallType;
-  attempt_number: number;
-  provider: string;
-  caller_type: CallerType;
-  agent_id: string | null;
-  language: string | null;
-  language_defaulted: boolean;
-  dtmf_response: string | null;
-  outcome: CallOutcome | null;
-  agent_note: string | null;
-  started_at: string | null;
-  ended_at: string | null;
-  recording_url: string | null;
-  provider_call_ref: string | null;
-  /** Raw provider telephony status (queued/ringing/completed/no-answer/busy/failed/...), distinct from the business `outcome`. */
-  provider_status: string | null;
-  duration_seconds: number | null;
-  created_at: string;
-}
-
-export type Dispatch = {
-  id: string;
-  recipient_id: string;
-  courier_name: string | null;
-  awb_number: string | null;
-  dispatch_date: string | null;
-  delivered_date: string | null;
-  created_by: string | null;
-  created_at: string;
-}
-
-export type VocRecording = {
-  id: string;
-  sealed_voc_id: string;
-  recipient_id: string;
-  campaign_id: string;
-  call_attempt_id: string;
-  call_type: CallType;
-  product_name: string | null;
-  caller_type: CallerType;
-  language: string | null;
-  dtmf_outcome: string | null;
-  storage_path: string;
-  duration_seconds: number | null;
-  created_at: string;
-}
-
-export type RecipientEvent = {
-  id: string;
-  recipient_id: string;
-  event_type: string;
-  actor_type: string;
-  actor_id: string | null;
-  payload: Record<string, unknown>;
-  created_at: string;
-}
-
-type Insert<T, Optional extends keyof T = never> = Omit<T, Optional> &
-  Partial<Pick<T, Optional>>;
-type Update<T> = Partial<T>;
-
-// Fields with DB defaults are optional on insert.
-type DefaultCols = 'id' | keyof Timestamps;
-
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.17"
+  }
   public: {
     Tables: {
-      profiles: {
-        Row: Profile;
-        Insert: Insert<Profile, 'created_at' | 'full_name' | 'role'>;
-        Update: Update<Profile>;
-        Relationships: [];
-      };
-      languages: {
-        Row: Language;
-        Insert: Insert<Language, 'is_active'>;
-        Update: Update<Language>;
-        Relationships: [];
-      };
-      campaigns: {
-        Row: Campaign;
-        Insert: Insert<
-          Campaign,
-          | DefaultCols
-          | 'order_reference'
-          | 'start_date'
-          | 'end_date'
-          | 'default_language'
-          | 'retry_limit'
-          | 'skip_menu_if_known'
-          | 'language_config'
-          | 'created_by'
-        >;
-        Update: Update<Campaign>;
-        Relationships: [
-          {
-            foreignKeyName: 'campaigns_created_by_fkey';
-            columns: ['created_by'];
-            isOneToOne: false;
-            referencedRelation: 'profiles';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      recipients: {
-        Row: Recipient;
-        Insert: Insert<
-          Recipient,
-          | DefaultCols
-          | 'updated_at'
-          | 'status'
-          | 'missing_address'
-          | 'missing_product'
-          | 'order_id'
-          | 'vendor_po_number'
-          | 'vendor_dispatch_id'
-          | 'order_date'
-          | 'ordered_quantity'
-          | 'dispatch_quantity'
-          | 'courier_name'
-          | 'calling_from'
-          | 'telecaller_name'
-          | 'contact_no'
-          | 'contact_no_e164'
-          | 'email'
-          | 'customer_name'
-          | 'address'
-          | 'product_name'
-          | 'product_delivery_date'
-          | 'preferred_language'
-          | 'language_source'
-          | 'dedupe_key'
-          | 'import_batch_id'
-        >; // unique_id is required on insert — no DB default, must come from the import row.
-        Update: Update<Recipient>;
-        Relationships: [
-          {
-            foreignKeyName: 'recipients_campaign_id_fkey';
-            columns: ['campaign_id'];
-            isOneToOne: false;
-            referencedRelation: 'campaigns';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'recipients_import_batch_id_fkey';
-            columns: ['import_batch_id'];
-            isOneToOne: false;
-            referencedRelation: 'import_batches';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      import_batches: {
-        Row: ImportBatch;
-        Insert: Insert<ImportBatch, DefaultCols>;
-        Update: Update<ImportBatch>;
-        Relationships: [
-          {
-            foreignKeyName: 'import_batches_campaign_fk';
-            columns: ['campaign_id'];
-            isOneToOne: false;
-            referencedRelation: 'campaigns';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
       call_attempts: {
-        Row: CallAttempt;
-        Insert: Insert<
-          CallAttempt,
-          | DefaultCols
-          | 'attempt_number'
-          | 'provider'
-          | 'caller_type'
-          | 'language_defaulted'
-          | 'agent_id'
-          | 'language'
-          | 'dtmf_response'
-          | 'outcome'
-          | 'agent_note'
-          | 'started_at'
-          | 'ended_at'
-          | 'recording_url'
-          | 'provider_call_ref'
-          | 'provider_status'
-          | 'duration_seconds'
-        >;
-        Update: Update<CallAttempt>;
+        Row: {
+          agent_id: string | null
+          agent_note: string | null
+          attempt_number: number
+          call_type: Database["public"]["Enums"]["call_type"]
+          caller_type: Database["public"]["Enums"]["caller_type"]
+          created_at: string
+          dtmf_response: string | null
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          language: string | null
+          language_defaulted: boolean
+          outcome: Database["public"]["Enums"]["call_outcome"] | null
+          provider: string
+          provider_call_ref: string | null
+          provider_status: string | null
+          recipient_id: string
+          recording_url: string | null
+          started_at: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          agent_note?: string | null
+          attempt_number?: number
+          call_type: Database["public"]["Enums"]["call_type"]
+          caller_type?: Database["public"]["Enums"]["caller_type"]
+          created_at?: string
+          dtmf_response?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          language?: string | null
+          language_defaulted?: boolean
+          outcome?: Database["public"]["Enums"]["call_outcome"] | null
+          provider?: string
+          provider_call_ref?: string | null
+          provider_status?: string | null
+          recipient_id: string
+          recording_url?: string | null
+          started_at?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          agent_note?: string | null
+          attempt_number?: number
+          call_type?: Database["public"]["Enums"]["call_type"]
+          caller_type?: Database["public"]["Enums"]["caller_type"]
+          created_at?: string
+          dtmf_response?: string | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          language?: string | null
+          language_defaulted?: boolean
+          outcome?: Database["public"]["Enums"]["call_outcome"] | null
+          provider?: string
+          provider_call_ref?: string | null
+          provider_status?: string | null
+          recipient_id?: string
+          recording_url?: string | null
+          started_at?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: 'call_attempts_recipient_id_fkey';
-            columns: ['recipient_id'];
-            isOneToOne: false;
-            referencedRelation: 'recipients';
-            referencedColumns: ['id'];
+            foreignKeyName: "call_attempts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'call_attempts_campaign_id_fkey';
-            columns: ['campaign_id'];
-            isOneToOne: false;
-            referencedRelation: 'campaigns';
-            referencedColumns: ['id'];
+            foreignKeyName: "call_attempts_language_fkey"
+            columns: ["language"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["code"]
           },
-        ];
-      };
+          {
+            foreignKeyName: "call_attempts_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatches: {
-        Row: Dispatch;
-        Insert: Insert<
-          Dispatch,
-          | DefaultCols
-          | 'courier_name'
-          | 'awb_number'
-          | 'dispatch_date'
-          | 'delivered_date'
-          | 'created_by'
-        >;
-        Update: Update<Dispatch>;
+        Row: {
+          awb_number: string | null
+          courier_name: string | null
+          created_at: string
+          created_by: string | null
+          delivered_date: string | null
+          dispatch_date: string | null
+          id: string
+          recipient_id: string
+        }
+        Insert: {
+          awb_number?: string | null
+          courier_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_date?: string | null
+          dispatch_date?: string | null
+          id?: string
+          recipient_id: string
+        }
+        Update: {
+          awb_number?: string | null
+          courier_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_date?: string | null
+          dispatch_date?: string | null
+          id?: string
+          recipient_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: 'dispatches_recipient_id_fkey';
-            columns: ['recipient_id'];
-            isOneToOne: true;
-            referencedRelation: 'recipients';
-            referencedColumns: ['id'];
+            foreignKeyName: "dispatches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-      voc_recordings: {
-        Row: VocRecording;
-        Insert: Insert<VocRecording, DefaultCols | 'duration_seconds'>;
-        Update: Update<VocRecording>;
+          {
+            foreignKeyName: "dispatches_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: true
+            referencedRelation: "recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      import_batches: {
+        Row: {
+          created_at: string
+          duplicate_count: number | null
+          error_count: number | null
+          file_name: string | null
+          id: string
+          row_count: number | null
+          uploaded_by: string | null
+          valid_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          duplicate_count?: number | null
+          error_count?: number | null
+          file_name?: string | null
+          id?: string
+          row_count?: number | null
+          uploaded_by?: string | null
+          valid_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          duplicate_count?: number | null
+          error_count?: number | null
+          file_name?: string | null
+          id?: string
+          row_count?: number | null
+          uploaded_by?: string | null
+          valid_count?: number | null
+        }
         Relationships: [
           {
-            foreignKeyName: 'voc_recordings_recipient_id_fkey';
-            columns: ['recipient_id'];
-            isOneToOne: false;
-            referencedRelation: 'recipients';
-            referencedColumns: ['id'];
+            foreignKeyName: "import_batches_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: 'voc_recordings_campaign_id_fkey';
-            columns: ['campaign_id'];
-            isOneToOne: false;
-            referencedRelation: 'campaigns';
-            referencedColumns: ['id'];
-          },
-          {
-            foreignKeyName: 'voc_recordings_call_attempt_id_fkey';
-            columns: ['call_attempt_id'];
-            isOneToOne: false;
-            referencedRelation: 'call_attempts';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
+        ]
+      }
+      ivr_call_events: {
+        Row: {
+          applet_hint: string | null
+          call_sid: string
+          created_at: string
+          id: number
+          status: string | null
+          step: string | null
+          user_input: string | null
+        }
+        Insert: {
+          applet_hint?: string | null
+          call_sid: string
+          created_at?: string
+          id?: number
+          status?: string | null
+          step?: string | null
+          user_input?: string | null
+        }
+        Update: {
+          applet_hint?: string | null
+          call_sid?: string
+          created_at?: string
+          id?: number
+          status?: string | null
+          step?: string | null
+          user_input?: string | null
+        }
+        Relationships: []
+      }
+      ivr_logs: {
+        Row: {
+          call_attempt_id: string | null
+          call_sid: string
+          caller_number: string | null
+          created_at: string
+          id: number
+          order_id: string | null
+          status: string | null
+          step: string | null
+          updated_at: string
+          user_input: string | null
+        }
+        Insert: {
+          call_attempt_id?: string | null
+          call_sid: string
+          caller_number?: string | null
+          created_at?: string
+          id?: number
+          order_id?: string | null
+          status?: string | null
+          step?: string | null
+          updated_at?: string
+          user_input?: string | null
+        }
+        Update: {
+          call_attempt_id?: string | null
+          call_sid?: string
+          caller_number?: string | null
+          created_at?: string
+          id?: number
+          order_id?: string | null
+          status?: string | null
+          step?: string | null
+          updated_at?: string
+          user_input?: string | null
+        }
+        Relationships: []
+      }
+      ivr_request_log: {
+        Row: {
+          call_sid: string | null
+          created_at: string
+          direction: string
+          duration_ms: number | null
+          error: string | null
+          event: string | null
+          fn: string
+          id: string
+          level: string | null
+          message: string | null
+          method: string | null
+          order_id: string | null
+          payload: Json | null
+          status: number | null
+          url: string | null
+        }
+        Insert: {
+          call_sid?: string | null
+          created_at?: string
+          direction: string
+          duration_ms?: number | null
+          error?: string | null
+          event?: string | null
+          fn: string
+          id?: string
+          level?: string | null
+          message?: string | null
+          method?: string | null
+          order_id?: string | null
+          payload?: Json | null
+          status?: number | null
+          url?: string | null
+        }
+        Update: {
+          call_sid?: string | null
+          created_at?: string
+          direction?: string
+          duration_ms?: number | null
+          error?: string | null
+          event?: string | null
+          fn?: string
+          id?: string
+          level?: string | null
+          message?: string | null
+          method?: string | null
+          order_id?: string | null
+          payload?: Json | null
+          status?: number | null
+          url?: string | null
+        }
+        Relationships: []
+      }
+      languages: {
+        Row: {
+          code: string
+          display_name: string
+          is_active: boolean
+        }
+        Insert: {
+          code: string
+          display_name: string
+          is_active?: boolean
+        }
+        Update: {
+          code?: string
+          display_name?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: []
+      }
       recipient_events: {
-        Row: RecipientEvent;
-        Insert: Insert<RecipientEvent, DefaultCols | 'payload' | 'actor_id'>;
-        Update: Update<RecipientEvent>;
+        Row: {
+          actor_id: string | null
+          actor_type: string
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          recipient_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type: string
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          recipient_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          recipient_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: 'recipient_events_recipient_id_fkey';
-            columns: ['recipient_id'];
-            isOneToOne: false;
-            referencedRelation: 'recipients';
-            referencedColumns: ['id'];
+            foreignKeyName: "recipient_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-    };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
+          {
+            foreignKeyName: "recipient_events_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipients: {
+        Row: {
+          address: string | null
+          company_name: string | null
+          contact_no: string | null
+          contact_no_e164: string | null
+          courier_name: string | null
+          created_at: string
+          customer_name: string | null
+          dedupe_key: string | null
+          dispatch_quantity: number | null
+          email: string | null
+          id: string
+          import_batch_id: string | null
+          language_source: Database["public"]["Enums"]["language_source"] | null
+          missing_address: boolean
+          missing_product: boolean
+          order_date: string | null
+          order_id: string | null
+          ordered_quantity: number | null
+          preferred_language: string | null
+          product_delivery_date: string | null
+          product_name: string | null
+          status: Database["public"]["Enums"]["recipient_status"]
+          telecaller_name: string | null
+          telecaller_phone: string | null
+          unique_id: string
+          updated_at: string
+          vendor_dispatch_id: string | null
+          vendor_po_number: string | null
+        }
+        Insert: {
+          address?: string | null
+          company_name?: string | null
+          contact_no?: string | null
+          contact_no_e164?: string | null
+          courier_name?: string | null
+          created_at?: string
+          customer_name?: string | null
+          dedupe_key?: string | null
+          dispatch_quantity?: number | null
+          email?: string | null
+          id?: string
+          import_batch_id?: string | null
+          language_source?:
+            | Database["public"]["Enums"]["language_source"]
+            | null
+          missing_address?: boolean
+          missing_product?: boolean
+          order_date?: string | null
+          order_id?: string | null
+          ordered_quantity?: number | null
+          preferred_language?: string | null
+          product_delivery_date?: string | null
+          product_name?: string | null
+          status?: Database["public"]["Enums"]["recipient_status"]
+          telecaller_name?: string | null
+          telecaller_phone?: string | null
+          unique_id?: string
+          updated_at?: string
+          vendor_dispatch_id?: string | null
+          vendor_po_number?: string | null
+        }
+        Update: {
+          address?: string | null
+          company_name?: string | null
+          contact_no?: string | null
+          contact_no_e164?: string | null
+          courier_name?: string | null
+          created_at?: string
+          customer_name?: string | null
+          dedupe_key?: string | null
+          dispatch_quantity?: number | null
+          email?: string | null
+          id?: string
+          import_batch_id?: string | null
+          language_source?:
+            | Database["public"]["Enums"]["language_source"]
+            | null
+          missing_address?: boolean
+          missing_product?: boolean
+          order_date?: string | null
+          order_id?: string | null
+          ordered_quantity?: number | null
+          preferred_language?: string | null
+          product_delivery_date?: string | null
+          product_name?: string | null
+          status?: Database["public"]["Enums"]["recipient_status"]
+          telecaller_name?: string | null
+          telecaller_phone?: string | null
+          unique_id?: string
+          updated_at?: string
+          vendor_dispatch_id?: string | null
+          vendor_po_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipients_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipients_preferred_language_fkey"
+            columns: ["preferred_language"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      voc_recordings: {
+        Row: {
+          call_attempt_id: string
+          call_type: Database["public"]["Enums"]["call_type"]
+          caller_type: Database["public"]["Enums"]["caller_type"]
+          created_at: string
+          dtmf_outcome: string | null
+          duration_seconds: number | null
+          id: string
+          language: string | null
+          product_name: string | null
+          recipient_id: string
+          sealed_voc_id: string
+          storage_path: string
+        }
+        Insert: {
+          call_attempt_id: string
+          call_type: Database["public"]["Enums"]["call_type"]
+          caller_type: Database["public"]["Enums"]["caller_type"]
+          created_at?: string
+          dtmf_outcome?: string | null
+          duration_seconds?: number | null
+          id?: string
+          language?: string | null
+          product_name?: string | null
+          recipient_id: string
+          sealed_voc_id: string
+          storage_path: string
+        }
+        Update: {
+          call_attempt_id?: string
+          call_type?: Database["public"]["Enums"]["call_type"]
+          caller_type?: Database["public"]["Enums"]["caller_type"]
+          created_at?: string
+          dtmf_outcome?: string | null
+          duration_seconds?: number | null
+          id?: string
+          language?: string | null
+          product_name?: string | null
+          recipient_id?: string
+          sealed_voc_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voc_recordings_call_attempt_id_fkey"
+            columns: ["call_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "call_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voc_recordings_language_fkey"
+            columns: ["language"]
+            isOneToOne: false
+            referencedRelation: "languages"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "voc_recordings_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      current_app_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      is_admin: { Args: never; Returns: boolean }
+    }
     Enums: {
-      user_role: UserRole;
-      recipient_status: RecipientStatus;
-      call_type: CallType;
-      caller_type: CallerType;
-      call_outcome: CallOutcome;
-      language_source: LanguageSource;
-    };
-    CompositeTypes: Record<string, never>;
-  };
+      call_outcome:
+        | "confirmed"
+        | "corrected"
+        | "no_answer"
+        | "wrong_number"
+        | "issue_raised"
+        | "transferred_to_agent"
+        | "not_reachable"
+      call_type: "order_confirmation" | "delivery_confirmation"
+      caller_type: "ivr" | "agent"
+      language_source:
+        | "recipient_selected"
+        | "defaulted"
+        | "region_inferred"
+        | "agent_set"
+      recipient_status:
+        | "imported"
+        | "order_confirm_pending"
+        | "address_confirmed"
+        | "address_corrected"
+        | "order_unreachable"
+        | "dispatched"
+        | "delivered"
+        | "delivery_confirm_pending"
+        | "confirmed"
+        | "issue_raised"
+        | "delivery_unreachable"
+        | "closed"
+      user_role: "admin" | "telecaller"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      call_outcome: [
+        "confirmed",
+        "corrected",
+        "no_answer",
+        "wrong_number",
+        "issue_raised",
+        "transferred_to_agent",
+        "not_reachable",
+      ],
+      call_type: ["order_confirmation", "delivery_confirmation"],
+      caller_type: ["ivr", "agent"],
+      language_source: [
+        "recipient_selected",
+        "defaulted",
+        "region_inferred",
+        "agent_set",
+      ],
+      recipient_status: [
+        "imported",
+        "order_confirm_pending",
+        "address_confirmed",
+        "address_corrected",
+        "order_unreachable",
+        "dispatched",
+        "delivered",
+        "delivery_confirm_pending",
+        "confirmed",
+        "issue_raised",
+        "delivery_unreachable",
+        "closed",
+      ],
+      user_role: ["admin", "telecaller"],
+    },
+  },
+} as const
+
+// ── Convenience aliases (not generated by supabase gen types) ──────────────
+
+export type Recipient = Tables<'recipients'>
+export type Profile = Tables<'profiles'>
+export type Language = Tables<'languages'>
+
+export type RecipientStatus = Database['public']['Enums']['recipient_status']
+export type CallOutcome = Database['public']['Enums']['call_outcome']
+export type CallType = Database['public']['Enums']['call_type']
+export type CallerType = Database['public']['Enums']['caller_type']
+export type LanguageSource = Database['public']['Enums']['language_source']
+export type UserRole = Database['public']['Enums']['user_role']
+
+export interface LanguageConfigEntry {
+  dtmf: string
+  lang: string
+}
+
+export type Update<T> = { [K in keyof T]?: T[K] }

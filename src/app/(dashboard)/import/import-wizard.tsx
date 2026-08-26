@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, Badge } from '@/components/ui
 
 type Step = 'upload' | 'preview' | 'done';
 
-export function ImportWizard({ campaignId }: { campaignId: string }) {
+export function ImportWizard() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('upload');
   const [fileName, setFileName] = useState('');
@@ -76,7 +76,6 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
 
     start(async () => {
       const res = await commitImport({
-        campaignId,
         fileName,
         rows: importable,
         counts: {
@@ -139,7 +138,7 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
             <Button variant="secondary" onClick={reset}>
               Import another file
             </Button>
-            <Button onClick={() => router.push(`/recipients?campaign=${campaignId}`)}>
+            <Button onClick={() => router.push('/recipients')}>
               View recipients
             </Button>
           </div>
@@ -164,8 +163,8 @@ export function ImportWizard({ campaignId }: { campaignId: string }) {
             Quantity, Dispatch Quantity, Address, Phone No., Email Id, Courier Name. Order Item
             ID is required and must be distinct per recipient/order — it&apos;s the id used for
             bulk-delivery matching and IVR calls (Order ID may repeat across items on the same
-            order). Phones are normalised to E.164 (India); duplicates within the campaign are
-            flagged. Not sure about the format? Download the template above and fill it in.
+            order). Phones are normalised to E.164 (India); duplicates are flagged.
+            Not sure about the format? Download the template above and fill it in.
           </p>
           <input
             type="file"

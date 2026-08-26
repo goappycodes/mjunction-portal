@@ -13,7 +13,7 @@ import {
   recordDeliveryConfirmationCall,
 } from '@/lib/domain/call-flow';
 import { ORDER_CALLABLE, DELIVERY_CALLABLE } from '@/lib/domain/status';
-import type { CallType, Campaign, Recipient, RecipientStatus } from '@/lib/database.types';
+import type { CallType, Recipient, RecipientStatus } from '@/lib/database.types';
 
 const USE_REAL_EXOTEL = process.env.TELEPHONY_PROVIDER === 'exotel';
 
@@ -40,10 +40,8 @@ async function nextAttemptNumber(
 
 /**
  * Trigger a real order-confirmation call via the IVR engine for a recipient
- * in an order-callable state (fresh import, still pending, or previously
- * unreachable). Unlike the mock path, this does not write call_attempts or
- * transition status itself — the IVR engine owns both once the call is
- * placed, since a real call is asynchronous (see ivr-engine-client.ts).
+ * in an order-callable state. The IVR engine owns call_attempts and status
+ * transitions once the call is placed.
  */
 export async function startOrderConfirmationCall(
   recipientId: string,
@@ -66,7 +64,6 @@ export async function startOrderConfirmationCall(
     const result = await triggerOrderConfirmationCall(r as Recipient);
     revalidatePath(`/recipients/${recipientId}`);
     revalidatePath('/recipients');
-    revalidatePath(`/campaigns/${r.campaign_id}`, 'layout');
     return { callSid: result.callSid };
   } catch (e) {
     return { error: (e as Error).message };
@@ -74,8 +71,7 @@ export async function startOrderConfirmationCall(
 }
 
 /**
- * Retry a single unreachable recipient (telecaller or admin). Re-runs the
- * appropriate IVR call based on current status.
+ * Retry a single unreachable recipient (telecaller or admin).
  */
 export async function retryCall(recipientId: string): Promise<BatchResult> {
   const user = await requireUser();
@@ -89,10 +85,6 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
       ? 'order_confirmation'
       : 'delivery_confirmation';
 
-  // A real call is triggered via the IVR engine and is asynchronous — it does
-  // not return a BatchResult synchronously the way the mock path below does,
-  // since the outcome isn't known yet. Both call types go the same way; the
-  // engine runs the matching script over the one shared Exotel flow.
   if (USE_REAL_EXOTEL) {
     if (!r.contact_no_e164) {
       return { error: 'Recipient has no phone number', placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
@@ -109,24 +101,14 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
     revalidatePath(`/recipients/${recipientId}`);
     revalidatePath('/recipients');
     revalidatePath('/queue/unreachable');
-    revalidatePath(`/campaigns/${r.campaign_id}`, 'layout');
     return { placed: 1, confirmed: 0, escalated: 0, unreachable: 0 };
   }
 
   const provider = getTelephonyProvider(service);
-
-  const { data: campaign } = await service.from('campaigns').select('*').eq('id', r.campaign_id).single();
-  if (!campaign) return { error: 'Campaign not found', placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
-
   const attemptNumber = await nextAttemptNumber(service, r.id, callType);
   const callResult = await provider.placeCall({
     recipientId: r.id,
-    campaignId: campaign.id,
     callType,
-    languageConfig: (campaign as Campaign).language_config,
-    defaultLanguage: campaign.default_language,
-    retryLimit: campaign.retry_limit,
-    skipMenuIfKnown: campaign.skip_menu_if_known,
     knownLanguage: r.preferred_language,
     productName: r.product_name,
   });
@@ -136,31 +118,19 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
     actorId: user.id,
   };
   if (callType === 'order_confirmation') {
-    await recordOrderConfirmationCall(service, r as Recipient, campaign as Campaign, callResult, attemptNumber, ctx);
+    await recordOrderConfirmationCall(service, r as Recipient, callResult, attemptNumber, ctx);
   } else {
-    await recordDeliveryConfirmationCall(service, r as Recipient, campaign as Campaign, callResult, attemptNumber, ctx);
+    await recordDeliveryConfirmationCall(service, r as Recipient, callResult, attemptNumber, ctx);
   }
 
   revalidatePath(`/recipients/${recipientId}`);
   revalidatePath('/recipients');
   revalidatePath('/queue/unreachable');
-  revalidatePath(`/campaigns/${r.campaign_id}`, 'layout');
   return { placed: 1, confirmed: 0, escalated: 0, unreachable: 0 };
 }
 
 /**
- * Run the delivery-confirmation IVR call for a single recipient awaiting it
- * (`delivery_confirm_pending` / `delivery_unreachable`) and return the resulting
- * status so the caller can patch just that row. This is the factor that moves a
- * recipient out of "Delivery Confirm Pending": press 1 → confirmed (VOC sealed),
- * press 2 → issue raised, no answer → delivery unreachable. No revalidatePath so
- * the recipients list is not re-rendered — the row is updated client-side.
- *
- * On the real Exotel path the same three outcomes apply but arrive later, over
- * the life of the call, so the status returned here is the recipient's current
- * one (unchanged) rather than an outcome, and `placed` is set so the UI can
- * say "call placed" instead of silently patching a row to the value it
- * already had — see the branch below.
+ * Run the delivery-confirmation IVR call for a single recipient.
  */
 export async function runDeliveryConfirmation(
   recipientId: string,
@@ -174,10 +144,6 @@ export async function runDeliveryConfirmation(
     return { error: 'Recipient is not awaiting delivery confirmation' };
   }
 
-  // Real call: hand off to the IVR engine, which owns call_attempts /
-  // recipients.status / the sealed VOC from here on. Nothing is written on
-  // this side, and no outcome exists yet — the row keeps its current status
-  // until the caller works through the menu (or the call never connects).
   if (USE_REAL_EXOTEL) {
     if (!r.contact_no_e164) return { error: 'Recipient has no phone number' };
     try {
@@ -189,23 +155,10 @@ export async function runDeliveryConfirmation(
   }
 
   const provider = getTelephonyProvider(service);
-
-  const { data: campaign } = await service
-    .from('campaigns')
-    .select('*')
-    .eq('id', r.campaign_id)
-    .single();
-  if (!campaign) return { error: 'Campaign not found' };
-
   const attemptNumber = await nextAttemptNumber(service, r.id, 'delivery_confirmation');
   const callResult = await provider.placeCall({
     recipientId: r.id,
-    campaignId: campaign.id,
     callType: 'delivery_confirmation',
-    languageConfig: (campaign as Campaign).language_config,
-    defaultLanguage: campaign.default_language,
-    retryLimit: campaign.retry_limit,
-    skipMenuIfKnown: campaign.skip_menu_if_known,
     knownLanguage: r.preferred_language,
     productName: r.product_name,
   });
@@ -213,7 +166,6 @@ export async function runDeliveryConfirmation(
   const rec = await recordDeliveryConfirmationCall(
     service,
     r as Recipient,
-    campaign as Campaign,
     callResult,
     attemptNumber,
     { actorType: user.role === 'telecaller' ? 'agent' : 'ivr', actorId: user.id },
