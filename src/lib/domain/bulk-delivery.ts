@@ -2,11 +2,14 @@ import { parseSpreadsheetDate } from './dates';
 
 /**
  * Bulk "mark as delivered" import columns. A courier/ops delivery feed:
- * one row per shipment, keyed by the recipient's Unique Order ID.
+ * one row per shipment, keyed by the recipient's Order Item ID — the same
+ * id used by the recipient import (see IMPORT_COLUMNS in lib/domain/import.ts).
  */
-export const BULK_DELIVERY_COLUMNS = ['Unique Order ID', 'Delivery Status', 'Delivery Date'] as const;
+export const BULK_DELIVERY_COLUMNS = ['Order Item ID', 'Delivery Status', 'Delivery Date'] as const;
 
 const HEADER_ALIASES: Record<string, string> = {
+  'order item id': 'unique_id',
+  // Older feeds/templates called this column something else — still accepted.
   'unique order id': 'unique_id',
   'unique id': 'unique_id',
   'order id': 'unique_id',
@@ -85,7 +88,7 @@ export function validateDeliveryRows(rawRows: RawRow[]): DeliveryPreview {
     const mapped = mapDeliveryRow(raw);
     const errors: string[] = [];
 
-    if (!mapped.unique_id) errors.push('Unique Order ID required');
+    if (!mapped.unique_id) errors.push('Order Item ID required');
     if (!mapped.delivery_status_raw) errors.push('Delivery status required');
     if (!mapped.delivered_date) errors.push('Invalid/missing delivery date');
 

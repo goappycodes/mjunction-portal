@@ -139,7 +139,7 @@ export interface BulkDeliveryPreview {
 
 /**
  * Match each format-validated row (from lib/domain/bulk-delivery.ts) to a
- * dispatched recipient by Unique Order ID. Read-only —
+ * dispatched recipient by Order Item ID. Read-only —
  * used to render the preview table before the admin commits.
  */
 export async function previewBulkDelivery(input: {
