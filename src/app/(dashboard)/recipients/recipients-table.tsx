@@ -72,6 +72,10 @@ export function RecipientsTable({
           <span className="font-mono text-xs">{c.getValue() ?? c.row.original.contact_no ?? '—'}</span>
         ),
       }),
+      col.accessor('company_name', {
+        header: 'Company',
+        cell: (c) => c.getValue() ?? '—',
+      }),
       col.accessor('order_id', {
         header: 'Order ID',
         cell: (c) => <span className="font-mono text-xs">{c.getValue() ?? '—'}</span>,
