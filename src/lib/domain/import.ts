@@ -75,7 +75,6 @@ export interface ValidatedRow extends MappedRow {
   missing_address: boolean;
   missing_product: boolean;
   phone_valid: boolean;
-  is_duplicate: boolean;
   is_duplicate_unique_id: boolean;
   errors: string[];
 }
@@ -85,7 +84,6 @@ export interface ImportPreview {
   rowCount: number;
   validCount: number;
   errorCount: number;
-  duplicateCount: number;
 }
 
 function str(v: unknown): string | null {
@@ -139,20 +137,18 @@ export const rowSchema = z.object({
 
 /**
  * Validate raw rows into a preview: normalises phones, flags missing
- * address/product, detects in-file duplicates (by E.164). `existingE164`
- * marks rows that collide with existing recipients.
+ * address/product, detects duplicate Order Item IDs. `existingUniqueIds`
+ * marks rows that collide with existing recipients. Phone numbers are not
+ * deduped — the same number can legitimately recur across orders/recipients.
  */
 export function validateRows(
   rawRows: RawRow[],
-  existingE164: Set<string> = new Set(),
   existingUniqueIds: Set<string> = new Set(),
 ): ImportPreview {
-  const seen = new Set<string>(existingE164);
   const seenUniqueIds = new Set<string>(existingUniqueIds);
   const rows: ValidatedRow[] = [];
   let validCount = 0;
   let errorCount = 0;
-  let duplicateCount = 0;
 
   rawRows.forEach((raw, i) => {
     const mapped = mapRow(raw);
@@ -169,16 +165,6 @@ export function validateRows(
     const missing_address = !mapped.address;
     const missing_product = !mapped.product_name;
 
-    let is_duplicate = false;
-    if (mapped.contact_no_e164) {
-      if (seen.has(mapped.contact_no_e164)) {
-        is_duplicate = true;
-        duplicateCount++;
-      } else {
-        seen.add(mapped.contact_no_e164);
-      }
-    }
-
     let is_duplicate_unique_id = false;
     if (mapped.unique_id) {
       if (seenUniqueIds.has(mapped.unique_id)) {
@@ -191,7 +177,7 @@ export function validateRows(
 
     const hasError = errors.length > 0;
     if (hasError) errorCount++;
-    else if (!is_duplicate) validCount++;
+    else validCount++;
 
     rows.push({
       ...mapped,
@@ -199,7 +185,6 @@ export function validateRows(
       missing_address,
       missing_product,
       phone_valid,
-      is_duplicate,
       is_duplicate_unique_id,
       errors,
     });
@@ -210,6 +195,5 @@ export function validateRows(
     rowCount: rawRows.length,
     validCount,
     errorCount,
-    duplicateCount,
   };
 }
