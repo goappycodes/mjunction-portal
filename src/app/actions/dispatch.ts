@@ -33,7 +33,7 @@ export async function saveDispatch(input: {
     .select('id, status')
     .eq('id', input.recipientId)
     .single();
-  if (!r) return { error: 'Recipient not found' };
+  if (!r) return { error: 'Order not found' };
 
   const { error } = await supabase.from('dispatches').upsert(
     {
@@ -66,7 +66,7 @@ export async function saveDispatch(input: {
   });
 
   // No revalidatePath here: the caller patches just the affected row client-side
-  // for an instant, flicker-free update. Both /recipients and the detail page
+  // for an instant, flicker-free update. Both /orders and the detail page
   // are force-dynamic, so they refetch fresh on the next navigation anyway.
   return { ok: true };
 }
@@ -88,8 +88,8 @@ export async function markDelivered(input: {
     .select('id, status')
     .eq('id', input.recipientId)
     .single();
-  if (!r) return { error: 'Recipient not found' };
-  if (r.status !== 'dispatched') return { error: 'Recipient is not in a dispatched state' };
+  if (!r) return { error: 'Order not found' };
+  if (r.status !== 'dispatched') return { error: 'Order is not in a dispatched state' };
 
   await supabase
     .from('dispatches')
@@ -212,7 +212,7 @@ export async function bulkMarkDelivered(input: {
     else skipped++;
   }
 
-  revalidatePath('/recipients');
+  revalidatePath('/orders');
   revalidatePath('/voc');
   return { updated, skipped };
 }

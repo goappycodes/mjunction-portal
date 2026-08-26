@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Gifting Fulfilment & VOC — Admin Panel",
-  description: "Internal admin panel for recipient lifecycle, IVR calls and VOC vault.",
+  description: "Internal admin panel for order lifecycle, IVR calls and VOC vault.",
 };
 
 export default function RootLayout({

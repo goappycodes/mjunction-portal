@@ -119,8 +119,8 @@ export function ImportWizard() {
     ];
     const wb = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([[...IMPORT_COLUMNS], example]);
-    XLSX.utils.book_append_sheet(wb, sheet, 'Recipients');
-    XLSX.writeFile(wb, 'recipient-import-template.xlsx');
+    XLSX.utils.book_append_sheet(wb, sheet, 'Orders');
+    XLSX.writeFile(wb, 'order-import-template.xlsx');
   }
 
   if (step === 'done' && result) {
@@ -129,15 +129,15 @@ export function ImportWizard() {
         <CardContent className="space-y-4 pt-6 text-center">
           <p className="text-lg font-semibold text-[var(--success)]">Import complete</p>
           <p className="text-sm">
-            Inserted <strong>{result.inserted}</strong> recipient(s).
+            Inserted <strong>{result.inserted}</strong> order(s).
             {result.skipped > 0 && ` Skipped ${result.skipped} duplicate(s).`}
           </p>
           <div className="flex justify-center gap-2">
             <Button variant="secondary" onClick={reset}>
               Import another file
             </Button>
-            <Button onClick={() => router.push('/recipients')}>
-              View recipients
+            <Button onClick={() => router.push('/orders')}>
+              View orders
             </Button>
           </div>
         </CardContent>
@@ -149,7 +149,7 @@ export function ImportWizard() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <CardTitle>Import recipients (Excel / CSV)</CardTitle>
+          <CardTitle>Import orders (Excel / CSV)</CardTitle>
           <Button type="button" variant="secondary" size="sm" onClick={downloadTemplate}>
             <Download className="h-4 w-4" /> Download template
           </Button>
@@ -159,10 +159,10 @@ export function ImportWizard() {
             Expected columns (mjunction Purchase Order export): Vendor Dispatch Id, Vendor PO
             Number, Order ID, Order Item ID, Order Date, Product Name, Recipent Name, Ordered
             Quantity, Dispatch Quantity, Address, Phone No., Email Id, Courier Name. Order Item
-            ID is required and must be distinct per recipient/order — it&apos;s the id used for
+            ID is required and must be distinct per order — it&apos;s the id used for
             bulk-delivery matching and IVR calls (Order ID may repeat across items on the same
             order). Phones are normalised to E.164 (India); the same number may recur across
-            orders/recipients. Not sure about the format? Download the template above and fill it in.
+            orders. Not sure about the format? Download the template above and fill it in.
           </p>
           <input
             type="file"

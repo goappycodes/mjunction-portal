@@ -123,7 +123,7 @@ export default async function EscalationsPage({
 
 const columns: Column<QueueItem>[] = [
   {
-    header: 'Recipient',
+    header: 'Order',
     cell: (it) => (
       <>
         <p className="font-medium">{it.customer_name ?? '—'}</p>
@@ -144,7 +144,7 @@ const columns: Column<QueueItem>[] = [
     header: '',
     cell: (it) => (
       <Link
-        href={`/recipients/${it.id}`}
+        href={`/orders/${it.id}`}
         className="font-medium text-[var(--primary)] hover:underline"
       >
         Handle →

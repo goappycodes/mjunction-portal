@@ -133,7 +133,7 @@ export function RecipientActions({
         {showRetry && (
           <div className="space-y-2">
             <p className="text-sm text-[var(--muted)]">
-              Call this unreachable recipient back.
+              Call this unreachable order back.
             </p>
             <Button
               onClick={() => start(async () => done(await retryCall(recipientId)))}
@@ -148,7 +148,7 @@ export function RecipientActions({
           <div className="space-y-2">
             <Label>Could not connect</Label>
             <p className="text-xs text-[var(--muted)]">
-              Records a failed attempt and moves this recipient to the unreachable queue.
+              Records a failed attempt and moves this order to the unreachable queue.
               The IVR does this automatically when a call doesn&apos;t connect — use this
               when there is no automatic result to go on.
             </p>

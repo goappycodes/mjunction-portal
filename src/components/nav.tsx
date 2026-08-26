@@ -40,7 +40,7 @@ const GROUPS: NavGroup[] = [
     heading: 'Operations',
     items: [
       { href: '/import', label: 'Import', icon: Upload, adminOnly: true },
-      { href: '/recipients', label: 'Recipients', icon: ClipboardList },
+      { href: '/orders', label: 'Orders', icon: ClipboardList },
       { href: '/voc', label: 'VOC & Reports', icon: FileText },
     ],
   },

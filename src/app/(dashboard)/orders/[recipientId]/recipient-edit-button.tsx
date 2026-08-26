@@ -55,7 +55,7 @@ export function RecipientEditButton({ recipient }: { recipient: Recipient }) {
         <Pencil className="h-3.5 w-3.5" /> Edit
       </Button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Edit recipient">
+      <Modal open={open} onClose={() => setOpen(false)} title="Edit order">
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Customer name</Label>

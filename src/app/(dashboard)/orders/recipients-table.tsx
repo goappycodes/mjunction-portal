@@ -139,7 +139,7 @@ export function RecipientsTable({
   if (!rows.length) {
     return (
       <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-12 text-center text-sm text-[var(--muted)]">
-        No recipients match this filter.
+        No orders match this filter.
       </div>
     );
   }
@@ -169,7 +169,7 @@ export function RecipientsTable({
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              onClick={() => router.push(`/recipients/${row.original.id}`)}
+              onClick={() => router.push(`/orders/${row.original.id}`)}
               className="cursor-pointer border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted-surface)]"
             >
               {row.getVisibleCells().map((cell) => (

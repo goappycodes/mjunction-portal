@@ -208,7 +208,7 @@ export async function VaultView({
       cell: (r) => r.data.company_name || '—',
     },
     {
-      header: 'Recipient',
+      header: 'Order',
       cell: (r) => (
         <>
           <p className="font-medium">{r.data.customer_name || '—'}</p>
@@ -287,9 +287,9 @@ export async function VaultView({
           {
             name: 'recipientId',
             label: 'Unique Order ID',
-            placeholder: 'Any recipient…',
+            placeholder: 'Any order…',
             searchPlaceholder: 'Search by name, contact or ID…',
-            allLabel: 'Any recipient',
+            allLabel: 'Any order',
             width: 'w-64',
             options: recipientOptions,
           },

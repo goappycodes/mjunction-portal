@@ -22,8 +22,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'recipientId is required' }, { status: 400 });
   }
 
-  revalidatePath('/recipients');
-  revalidatePath(`/recipients/${recipientId}`);
+  revalidatePath('/orders');
+  revalidatePath(`/orders/${recipientId}`);
   revalidatePath('/voc');
 
   return NextResponse.json({ ok: true });

@@ -39,7 +39,7 @@ export async function updateRecipient(
     .select('id')
     .eq('id', input.recipientId)
     .single();
-  if (!existing) return { error: 'Recipient not found' };
+  if (!existing) return { error: 'Order not found' };
 
   const customerName = input.customerName.trim();
   if (!customerName) return { error: 'Customer name is required' };
@@ -78,8 +78,8 @@ export async function updateRecipient(
     payload: { action: 'details_updated' },
   });
 
-  revalidatePath(`/recipients/${input.recipientId}`);
-  revalidatePath('/recipients');
+  revalidatePath(`/orders/${input.recipientId}`);
+  revalidatePath('/orders');
   return { ok: true };
 }
 
@@ -114,7 +114,7 @@ export async function updateRecipientStatus(input: {
     .select('id, status')
     .eq('id', input.recipientId)
     .single();
-  if (!r) return { error: 'Recipient not found' };
+  if (!r) return { error: 'Order not found' };
   if (r.status === input.status) return { ok: true };
 
   const { error } = await supabase
@@ -139,8 +139,8 @@ export async function updateRecipientStatus(input: {
     },
   });
 
-  revalidatePath(`/recipients/${input.recipientId}`);
-  revalidatePath('/recipients');
+  revalidatePath(`/orders/${input.recipientId}`);
+  revalidatePath('/orders');
   revalidatePath('/queue/escalations');
   revalidatePath('/queue/unreachable');
   return { ok: true };

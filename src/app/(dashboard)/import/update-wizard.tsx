@@ -109,8 +109,8 @@ export function UpdateWizard() {
     const example = ['963153', 'Acme Corp'];
     const wb = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([[...UPDATE_COLUMNS], example]);
-    XLSX.utils.book_append_sheet(wb, sheet, 'Update Recipients');
-    XLSX.writeFile(wb, 'update-recipients-template.xlsx');
+    XLSX.utils.book_append_sheet(wb, sheet, 'Update Orders');
+    XLSX.writeFile(wb, 'update-orders-template.xlsx');
   }
 
   if (step === 'done' && result) {
@@ -119,15 +119,15 @@ export function UpdateWizard() {
         <CardContent className="space-y-4 pt-6 text-center">
           <p className="text-lg font-semibold text-[var(--success)]">Update complete</p>
           <p className="text-sm">
-            Updated <strong>{result.updated}</strong> recipient(s).
+            Updated <strong>{result.updated}</strong> order(s).
             {result.notFound > 0 && ` ${result.notFound} Order Item ID(s) not found.`}
           </p>
           <div className="flex justify-center gap-2">
             <Button variant="secondary" onClick={reset}>
               Update another file
             </Button>
-            <Button onClick={() => router.push('/recipients')}>
-              View recipients
+            <Button onClick={() => router.push('/orders')}>
+              View orders
             </Button>
           </div>
         </CardContent>
@@ -139,7 +139,7 @@ export function UpdateWizard() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3">
-          <CardTitle>Update recipients (Excel / CSV)</CardTitle>
+          <CardTitle>Update orders (Excel / CSV)</CardTitle>
           <Button type="button" variant="secondary" size="sm" onClick={downloadTemplate}>
             <Download className="h-4 w-4" /> Download template
           </Button>
@@ -148,7 +148,7 @@ export function UpdateWizard() {
           <p className="text-sm text-[var(--muted)]">
             Upload a file with two columns: <strong>Order Item ID</strong> and{' '}
             <strong>Company Name</strong>. Each row updates the company name for the matching
-            recipient. Order Item IDs that do not exist are counted as not found.
+            order. Order Item IDs that do not exist are counted as not found.
           </p>
           <input
             type="file"
@@ -205,7 +205,7 @@ export function UpdateWizard() {
             </div>
             <div className="flex gap-2">
               <Button onClick={commit} disabled={pending || validRows.length === 0}>
-                {pending ? 'Updating…' : `Update ${validRows.length} recipient(s)`}
+                {pending ? 'Updating…' : `Update ${validRows.length} order(s)`}
               </Button>
               <Button variant="secondary" onClick={reset}>
                 Cancel

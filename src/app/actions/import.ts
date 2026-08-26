@@ -101,7 +101,7 @@ export async function commitImport(input: {
     }
   }
 
-  revalidatePath('/recipients');
+  revalidatePath('/orders');
   return {
     inserted: toInsert.length,
     skippedDuplicates,
@@ -140,6 +140,6 @@ export async function updateRecipients(input: {
     else updated += data.length;
   }
 
-  revalidatePath('/recipients');
+  revalidatePath('/orders');
   return { updated, notFound };
 }

@@ -52,7 +52,7 @@ export async function resolveOrderEscalation(input: {
     .select('id, status, preferred_language')
     .eq('id', input.recipientId)
     .single();
-  if (!r) return { error: 'Recipient not found' };
+  if (!r) return { error: 'Order not found' };
   // `issue_raised` is the normal state for an order escalation now that every
   // press-2 lands there; the other two remain valid entry points for a
   // recipient escalated before that change, or one an agent is fixing up
@@ -62,7 +62,7 @@ export async function resolveOrderEscalation(input: {
     r.status !== 'order_confirm_pending' &&
     r.status !== 'order_unreachable'
   ) {
-    return { error: 'Recipient is not in an order escalation state' };
+    return { error: 'Order is not in an order escalation state' };
   }
 
   const target = input.confirmedUnchanged ? 'address_confirmed' : 'address_corrected';
@@ -106,7 +106,7 @@ export async function resolveOrderEscalation(input: {
     actorId: user.id,
   });
 
-  revalidatePath(`/recipients/${r.id}`);
+  revalidatePath(`/orders/${r.id}`);
   revalidatePath('/queue/escalations');
   return { ok: true };
 }
@@ -146,14 +146,14 @@ export async function markUnreachable(input: {
     .select('id, status, preferred_language')
     .eq('id', input.recipientId)
     .single();
-  if (!r) return { error: 'Recipient not found' };
+  if (!r) return { error: 'Order not found' };
 
   const isOrderPhase = ORDER_PHASE.includes(r.status);
   const isDeliveryPhase =
     r.status === 'delivery_confirm_pending' || r.status === 'delivery_unreachable';
 
   if (!isOrderPhase && !isDeliveryPhase) {
-    return { error: 'Recipient is not awaiting a call' };
+    return { error: 'Order is not awaiting a call' };
   }
 
   const target: RecipientStatus = isOrderPhase ? 'order_unreachable' : 'delivery_unreachable';
@@ -192,8 +192,8 @@ export async function markUnreachable(input: {
     payload: { via: callType, outcome: 'not_reachable', manual: true },
   });
 
-  revalidatePath(`/recipients/${r.id}`);
-  revalidatePath('/recipients');
+  revalidatePath(`/orders/${r.id}`);
+  revalidatePath('/orders');
   revalidatePath('/queue/unreachable');
   return { ok: true };
 }
@@ -214,8 +214,8 @@ export async function resolveDeliveryIssue(input: {
     .select('id, status, preferred_language')
     .eq('id', input.recipientId)
     .single();
-  if (!r) return { error: 'Recipient not found' };
-  if (r.status !== 'issue_raised') return { error: 'Recipient has no open issue' };
+  if (!r) return { error: 'Order not found' };
+  if (r.status !== 'issue_raised') return { error: 'Order has no open issue' };
   // `issue_raised` is now reachable from the order half too, and closing one of
   // those here would skip the rest of the pipeline entirely.
   if ((await escalationPhase(supabase, r.id)) !== 'delivery_confirmation') {
@@ -250,7 +250,7 @@ export async function resolveDeliveryIssue(input: {
     actorId: user.id,
   });
 
-  revalidatePath(`/recipients/${r.id}`);
+  revalidatePath(`/orders/${r.id}`);
   revalidatePath('/queue/escalations');
   return { ok: true };
 }

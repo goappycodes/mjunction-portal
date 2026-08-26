@@ -6,23 +6,23 @@ import { PageHeader } from '@/components/page-header';
 
 export const dynamic = 'force-dynamic';
 
-type ImportType = 'recipients' | 'update' | 'delivery';
+type ImportType = 'orders' | 'update' | 'delivery';
 
 const TABS: { key: ImportType; label: string; description: string }[] = [
   {
-    key: 'recipients',
-    label: 'Import Recipients',
-    description: 'Add new recipients from a Purchase Order export file.',
+    key: 'orders',
+    label: 'Import Orders',
+    description: 'Add new orders from a Purchase Order export file.',
   },
   {
     key: 'update',
-    label: 'Update Recipients',
-    description: 'Update company names for existing recipients by Order Item ID.',
+    label: 'Update Orders',
+    description: 'Update company names for existing orders by Order Item ID.',
   },
   {
     key: 'delivery',
     label: 'Bulk Delivery',
-    description: 'Mark recipients as delivered in bulk from a dispatch file.',
+    description: 'Mark orders as delivered in bulk from a dispatch file.',
   },
 ];
 
@@ -35,13 +35,13 @@ export default async function ImportPage({
   await requireAdmin();
 
   const activeType: ImportType =
-    sp.type === 'update' ? 'update' : sp.type === 'delivery' ? 'delivery' : 'recipients';
+    sp.type === 'update' ? 'update' : sp.type === 'delivery' ? 'delivery' : 'orders';
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Import"
-        description="Import recipient data or update existing records."
+        description="Import order data or update existing records."
       />
 
       {/* Import type tabs */}
@@ -66,7 +66,7 @@ export default async function ImportPage({
         {TABS.find((t) => t.key === activeType)?.description}
       </p>
 
-      {activeType === 'recipients' && <ImportWizard />}
+      {activeType === 'orders' && <ImportWizard />}
       {activeType === 'update' && <UpdateWizard />}
       {activeType === 'delivery' && <BulkDeliveryWizard />}
     </div>

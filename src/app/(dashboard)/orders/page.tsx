@@ -20,8 +20,8 @@ export default async function RecipientsHubPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Recipients"
-        description="Recipient pipeline, calls and dispatch — all in one place."
+        title="Orders"
+        description="Order pipeline, calls and dispatch — all in one place."
       />
       <RecipientCallsView isAdmin={user.role === 'admin'} sp={sp} />
     </div>

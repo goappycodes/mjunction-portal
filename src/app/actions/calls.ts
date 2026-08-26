@@ -50,11 +50,11 @@ export async function startOrderConfirmationCall(
   const service = createServiceClient();
 
   const { data: r } = await service.from('recipients').select('*').eq('id', recipientId).single();
-  if (!r) return { error: 'Recipient not found' };
+  if (!r) return { error: 'Order not found' };
   if (!ORDER_CALLABLE.includes(r.status)) {
-    return { error: 'Recipient is not awaiting order confirmation' };
+    return { error: 'Order is not awaiting order confirmation' };
   }
-  if (!r.contact_no_e164) return { error: 'Recipient has no phone number' };
+  if (!r.contact_no_e164) return { error: 'Order has no phone number' };
 
   if (!USE_REAL_EXOTEL) {
     return { error: 'TELEPHONY_PROVIDER is not set to exotel — use Retry call (mock) instead' };
@@ -62,8 +62,8 @@ export async function startOrderConfirmationCall(
 
   try {
     const result = await triggerOrderConfirmationCall(r as Recipient);
-    revalidatePath(`/recipients/${recipientId}`);
-    revalidatePath('/recipients');
+    revalidatePath(`/orders/${recipientId}`);
+    revalidatePath('/orders');
     return { callSid: result.callSid };
   } catch (e) {
     return { error: (e as Error).message };
@@ -78,7 +78,7 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
   const service = createServiceClient();
 
   const { data: r } = await service.from('recipients').select('*').eq('id', recipientId).single();
-  if (!r) return { error: 'Recipient not found', placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
+  if (!r) return { error: 'Order not found', placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
 
   const callType: CallType =
     r.status === 'order_unreachable' || ORDER_CALLABLE.includes(r.status)
@@ -87,7 +87,7 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
 
   if (USE_REAL_EXOTEL) {
     if (!r.contact_no_e164) {
-      return { error: 'Recipient has no phone number', placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
+      return { error: 'Order has no phone number', placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
     }
     try {
       if (callType === 'order_confirmation') {
@@ -98,8 +98,8 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
     } catch (e) {
       return { error: (e as Error).message, placed: 0, confirmed: 0, escalated: 0, unreachable: 0 };
     }
-    revalidatePath(`/recipients/${recipientId}`);
-    revalidatePath('/recipients');
+    revalidatePath(`/orders/${recipientId}`);
+    revalidatePath('/orders');
     revalidatePath('/queue/unreachable');
     return { placed: 1, confirmed: 0, escalated: 0, unreachable: 0 };
   }
@@ -123,8 +123,8 @@ export async function retryCall(recipientId: string): Promise<BatchResult> {
     await recordDeliveryConfirmationCall(service, r as Recipient, callResult, attemptNumber, ctx);
   }
 
-  revalidatePath(`/recipients/${recipientId}`);
-  revalidatePath('/recipients');
+  revalidatePath(`/orders/${recipientId}`);
+  revalidatePath('/orders');
   revalidatePath('/queue/unreachable');
   return { placed: 1, confirmed: 0, escalated: 0, unreachable: 0 };
 }
@@ -139,13 +139,13 @@ export async function runDeliveryConfirmation(
   const service = createServiceClient();
 
   const { data: r } = await service.from('recipients').select('*').eq('id', recipientId).single();
-  if (!r) return { error: 'Recipient not found' };
+  if (!r) return { error: 'Order not found' };
   if (!DELIVERY_CALLABLE.includes(r.status)) {
-    return { error: 'Recipient is not awaiting delivery confirmation' };
+    return { error: 'Order is not awaiting delivery confirmation' };
   }
 
   if (USE_REAL_EXOTEL) {
-    if (!r.contact_no_e164) return { error: 'Recipient has no phone number' };
+    if (!r.contact_no_e164) return { error: 'Order has no phone number' };
     try {
       await triggerDeliveryConfirmationCall(r as Recipient);
     } catch (e) {

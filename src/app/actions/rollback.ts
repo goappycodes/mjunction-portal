@@ -33,7 +33,7 @@ export async function rollbackOrder(input: {
     .select('id, status, created_at')
     .eq('id', input.recipientId)
     .single();
-  if (!r) return { error: 'Recipient not found' };
+  if (!r) return { error: 'Order not found' };
 
   const allowedTargets = getRollbackTargets(r.status);
   if (!allowedTargets.includes(input.targetStatus)) {
@@ -92,7 +92,7 @@ export async function rollbackOrder(input: {
     payload: { from: r.status, to: input.targetStatus },
   });
 
-  revalidatePath(`/recipients/${r.id}`);
-  revalidatePath('/recipients');
+  revalidatePath(`/orders/${r.id}`);
+  revalidatePath('/orders');
   return { ok: true };
 }

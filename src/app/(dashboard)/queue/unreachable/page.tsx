@@ -54,10 +54,10 @@ export default async function UnreachablePage({
 
   const columns: Column<NonNullable<typeof rows>[number]>[] = [
     {
-      header: 'Recipient',
+      header: 'Order',
       cell: (r) => (
         <>
-          <Link href={`/recipients/${r.id}`} className="font-medium hover:underline">
+          <Link href={`/orders/${r.id}`} className="font-medium hover:underline">
             {r.customer_name ?? '—'}
           </Link>
           <p className="font-mono text-xs text-[var(--muted)]">{r.contact_no_e164}</p>
@@ -77,7 +77,7 @@ export default async function UnreachablePage({
     <div className="space-y-4">
       <PageHeader
         title="Unreachable"
-        description="No-answer / not-reachable recipients awaiting a retry."
+        description="No-answer / not-reachable orders awaiting a retry."
       />
 
       <FilterBar action="/queue/unreachable" resetHref="/queue/unreachable">
@@ -104,7 +104,7 @@ export default async function UnreachablePage({
         rows={rows ?? []}
         rowKey={(r) => r.id}
         className="max-h-[calc(100vh-15rem)]"
-        empty="No unreachable recipients. 🎉"
+        empty="No unreachable orders. 🎉"
       />
 
       <Pagination

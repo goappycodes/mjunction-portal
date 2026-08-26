@@ -8,7 +8,7 @@ import { buildQuery } from '@/lib/utils';
 import type { RecipientStatus } from '@/lib/database.types';
 
 const PAGE_SIZE = 15;
-const BASE = '/recipients';
+const BASE = '/orders';
 const NO_MATCH = '00000000-0000-0000-0000-000000000000';
 
 /**

@@ -123,14 +123,14 @@ export function BulkDeliveryWizard() {
         <CardContent className="space-y-4 pt-6 text-center">
           <p className="text-lg font-semibold text-[var(--success)]">Bulk update complete</p>
           <p className="text-sm">
-            Marked <strong>{result.updated}</strong> recipient(s) as delivered.
+            Marked <strong>{result.updated}</strong> order(s) as delivered.
             {result.skipped > 0 && ` ${result.skipped} row(s) could not be applied.`}
           </p>
           <div className="flex justify-center gap-2">
             <Button variant="secondary" onClick={reset}>
               Upload another file
             </Button>
-            <Button onClick={() => router.push('/recipients')}>
+            <Button onClick={() => router.push('/orders')}>
               View recipients
             </Button>
           </div>
@@ -151,8 +151,8 @@ export function BulkDeliveryWizard() {
         <CardContent className="space-y-3">
           <p className="text-sm text-[var(--muted)]">
             Expected columns: Order Item ID, Delivery Status, Delivery Date. Rows are matched
-            to recipients by Order Item ID — only rows whose status reads
-            &ldquo;Delivered&rdquo; and whose recipient is currently dispatched get applied.
+            to orders by Order Item ID — only rows whose status reads
+            &ldquo;Delivered&rdquo; and whose order is currently dispatched get applied.
           </p>
           <input
             type="file"
@@ -161,7 +161,7 @@ export function BulkDeliveryWizard() {
             className="block text-sm file:mr-3 file:rounded-md file:border file:border-[var(--border)] file:bg-[var(--muted-surface)] file:px-3 file:py-1.5 file:text-sm"
           />
           {pending && step === 'upload' && (
-            <p className="text-sm text-[var(--muted)]">Matching rows against recipients…</p>
+            <p className="text-sm text-[var(--muted)]">Matching rows against orders…</p>
           )}
           {parseError && <p className="text-sm text-[var(--danger)]">{parseError}</p>}
         </CardContent>
@@ -188,7 +188,7 @@ export function BulkDeliveryWizard() {
                   <tr>
                     <th className="px-3 py-2 font-medium">#</th>
                     <th className="px-3 py-2 font-medium">Order Item ID</th>
-                    <th className="px-3 py-2 font-medium">Recipient</th>
+                    <th className="px-3 py-2 font-medium">Order</th>
                     <th className="px-3 py-2 font-medium">Status (file)</th>
                     <th className="px-3 py-2 font-medium">Delivery date</th>
                     <th className="px-3 py-2 font-medium">Result</th>
@@ -227,7 +227,7 @@ export function BulkDeliveryWizard() {
                 Cancel
               </Button>
               <Button onClick={commit} loading={pending} disabled={counts.matched === 0}>
-                {pending ? 'Updating…' : `Mark ${counts.matched} recipient(s) delivered`}
+                {pending ? 'Updating…' : `Mark ${counts.matched} order(s) delivered`}
               </Button>
             </div>
           </CardContent>

@@ -37,7 +37,7 @@ export default async function OverviewPage() {
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-        <StatCard label="Recipients" value={metrics.total} />
+        <StatCard label="Orders" value={metrics.total} />
         <StatCard label="Order-confirm rate" value={`${metrics.orderConfirmRate}%`} accent="green" />
         <StatCard label="Delivery rate" value={`${metrics.deliveryRate}%`} accent="green" />
         <StatCard label="VOC (delivery) rate" value={`${metrics.vocRate}%`} accent="green" />

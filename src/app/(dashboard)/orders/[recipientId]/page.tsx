@@ -92,7 +92,7 @@ export default async function RecipientPage({
   return (
     <div className="space-y-5">
       <div>
-        <BackButton fallbackHref="/recipients" />
+        <BackButton fallbackHref="/orders" />
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-semibold">{recipient.customer_name ?? 'Unnamed'}</h1>
           <StatusBadge status={recipient.status} />
