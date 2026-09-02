@@ -41,6 +41,8 @@ export async function proxy(request: NextRequest) {
   const isPublicAsset =
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/telephony') ||
+    // Customer-facing self-service links (e.g. address correction) — no login.
+    pathname.startsWith('/order/') ||
     pathname === '/favicon.ico';
 
   if (!user && !isAuthRoute && !isPublicAsset) {
