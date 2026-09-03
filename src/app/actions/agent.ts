@@ -1,10 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { logEvent, transitionStatus } from '@/lib/domain/audit';
-import type { CallType, RecipientStatus } from '@/lib/database.types';
+import type { CallType, Database, RecipientStatus } from '@/lib/database.types';
 
 export type AgentState = { error?: string; ok?: boolean };
 
@@ -18,9 +19,13 @@ export type AgentState = { error?: string; ok?: boolean };
  * back to the order phase, which is the earlier half and the safer default:
  * an order escalation resolved wrongly is re-callable, a delivery one closed
  * wrongly is terminal.
+ *
+ * Typed against the bare client rather than the SSR one because the public
+ * address-change route calls this on the service-role client — it has no
+ * session to build an SSR client from.
  */
 export async function escalationPhase(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: SupabaseClient<Database>,
   recipientId: string,
 ): Promise<CallType> {
   const { data } = await supabase
