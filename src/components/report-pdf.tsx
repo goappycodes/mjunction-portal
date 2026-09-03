@@ -32,8 +32,7 @@ const COLS: { key: keyof Report['rows'][number]; label: string; wide?: 'name' | 
   { key: 'language', label: 'Lang' },
   { key: 'started_at', label: 'Started' },
   { key: 'sealed_voc_id', label: 'Sealed VOC ID', wide: 'voc' },
-  { key: 'dtmf', label: 'DTMF' },
-  { key: 'duration', label: 'Duration' },
+  { key: 'dtmf', label: 'DTMF Input' },
 ];
 
 export function ReportDoc({ report }: { report: Report }) {

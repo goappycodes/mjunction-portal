@@ -3,7 +3,6 @@ import { getLanguages, langName } from '@/lib/domain/languages';
 import { OUTCOME_LABELS, callStatusLabel, callStatusColor } from '@/lib/domain/labels';
 import { formatDate, formatDateTime, buildQuery } from '@/lib/utils';
 import { ReportExport } from '@/components/report-export';
-import { VocPlayer } from '@/components/voc-player';
 import { Badge } from '@/components/ui/primitives';
 import { EmptyState } from '@/components/ui/empty-state';
 import { DataTable, type Column } from '@/components/ui/data-table';
@@ -21,24 +20,16 @@ const TAB_CALL_TYPE: Record<VocTab, CallType> = {
   delivery: 'delivery_confirmation',
 };
 
-/** A report row plus the identifiers the on-screen table needs (audio player, badge color). */
+/** A report row plus the identifiers the on-screen table needs (badge color, VOC id). */
 type VaultRow = {
   key: string;
   vocId: string | null;
   outcome: CallOutcome | null;
   providerStatus: string | null;
-  recordingUrl: string | null;
   data: ReportRow;
 };
 
 const dateCell = 'text-xs text-[var(--muted)]';
-const muted = (v: string) => <span className="text-xs text-[var(--muted)]">{v}</span>;
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
 
 /**
  * VOC & Reports is a call log — one row per call_attempt, not per recipient.
@@ -54,11 +45,16 @@ export async function VaultView({
   const supabase = await createClient();
   const callType = TAB_CALL_TYPE[tab];
 
+  // Neither `recording_url` nor `duration_seconds` is selected any more: the
+  // call log no longer shows a Recording link or a Duration column. Both
+  // columns are still written by the IVR and still on the row — this is a
+  // reporting change, not a data one — so re-adding either here is all it
+  // would take to bring them back.
   const CALL_LOG_COLUMNS = `
     id, recipient_id, call_type, attempt_number, outcome, provider_status, language,
-    dtmf_response, started_at, ended_at, recording_url, duration_seconds, created_at,
+    dtmf_response, started_at, ended_at, created_at,
     recipients!inner(customer_name, contact_no_e164, product_name, telecaller_name, unique_id, order_id, company_name),
-    voc_recordings(id, sealed_voc_id, duration_seconds)
+    voc_recordings(id, sealed_voc_id)
   ` as const;
 
   let callsQuery = supabase.from('call_attempts').select(CALL_LOG_COLUMNS).eq('call_type', callType);
@@ -140,7 +136,7 @@ export async function VaultView({
       company_name: string | null;
     };
     const voc = (c.voc_recordings as unknown as
-      | { id: string; sealed_voc_id: string; duration_seconds: number | null }[]
+      | { id: string; sealed_voc_id: string }[]
       | null)?.[0];
 
     return {
@@ -148,7 +144,6 @@ export async function VaultView({
       vocId: voc?.id ?? null,
       outcome: c.outcome,
       providerStatus: c.provider_status,
-      recordingUrl: c.recording_url,
       data: {
         company_name: recipient.company_name ?? '—',
         unique_id: recipient.unique_id,
@@ -164,17 +159,6 @@ export async function VaultView({
         started_at: formatDateTime(c.started_at),
         ended_at: formatDateTime(c.ended_at),
         sealed_voc_id: voc?.sealed_voc_id ?? '—',
-        duration: (() => {
-          const secs =
-            voc?.duration_seconds ??
-            c.duration_seconds ??
-            (c.started_at && c.ended_at
-              ? Math.round(
-                  (new Date(c.ended_at).getTime() - new Date(c.started_at).getTime()) / 1000,
-                )
-              : null);
-          return secs != null && secs > 0 ? formatDuration(secs) : '—';
-        })(),
       },
     };
   });
@@ -229,32 +213,17 @@ export async function VaultView({
       cell: (r) => <Badge color={callStatusColor(r.outcome, r.providerStatus)}>{r.data.status}</Badge>,
     },
     { header: 'Language', cell: (r) => r.data.language },
-    { header: 'DTMF', className: 'font-mono text-xs', cell: (r) => r.data.dtmf },
+    // The key the caller actually pressed on the menu — "1" to confirm, "2" to
+    // raise an issue. Real IVR calls only started recording this once the
+    // closing steps began sending the digit alongside the outcome; before
+    // that this column was blank for everything but a mock call.
+    { header: 'DTMF Input', className: 'font-mono text-xs', cell: (r) => r.data.dtmf },
     { header: 'Started', className: dateCell, cell: (r) => r.data.started_at },
     { header: 'Ended', className: dateCell, cell: (r) => r.data.ended_at },
     {
       header: 'Sealed VOC id',
       className: 'font-mono text-xs',
       cell: (r) => (r.vocId ? <Badge color="green">{r.data.sealed_voc_id}</Badge> : '—'),
-    },
-    { header: 'Duration', className: 'tabular-nums', cell: (r) => r.data.duration },
-    {
-      header: 'Recording',
-      cell: (r) =>
-        r.vocId ? (
-          <VocPlayer vocId={r.vocId} />
-        ) : r.recordingUrl ? (
-          <a
-            href={r.recordingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-medium text-[var(--primary)] hover:underline"
-          >
-            Recording
-          </a>
-        ) : (
-          muted('—')
-        ),
     },
   ];
 
@@ -302,7 +271,7 @@ export async function VaultView({
         columns={columns}
         rows={pageRows}
         rowKey={(r) => r.key}
-        minWidth="min-w-[1400px]"
+        minWidth="min-w-[1200px]"
         className="max-h-[calc(100vh-15rem)]"
         empty="No calls match these filters."
       />

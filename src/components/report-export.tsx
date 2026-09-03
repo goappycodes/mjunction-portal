@@ -16,11 +16,10 @@ const HEADERS: Record<keyof Report['rows'][number], string> = {
   attempt_number: 'Attempt #',
   status: 'Status',
   language: 'Language',
-  dtmf: 'DTMF',
+  dtmf: 'DTMF Input',
   started_at: 'Started',
   ended_at: 'Ended',
   sealed_voc_id: 'Sealed VOC ID',
-  duration: 'Duration',
 };
 
 export function ReportExport({ report }: { report: Report }) {

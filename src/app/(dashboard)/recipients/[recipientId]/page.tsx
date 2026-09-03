@@ -31,11 +31,14 @@ function eventSummary(eventType: string, payload: Record<string, unknown>): stri
     case 'rollback':
       return `${titleCase(String(payload.from ?? ''))} → ${titleCase(String(payload.to ?? ''))}`;
     case 'call_attempt':
+      // The DTMF digit is spelled out here rather than left implicit in the
+      // outcome label: an escalation that came from a keypress and one written
+      // by an agent read identically otherwise, and only the first has a digit.
       return `${CALL_TYPE_LABELS[payload.call_type as 'order_confirmation'] ?? payload.call_type} · ${
         payload.outcome ? OUTCOME_LABELS[payload.outcome as 'confirmed'] ?? payload.outcome : ''
-      }${payload.language ? ` · ${payload.language}` : ''}${
-        payload.language_defaulted ? ' (defaulted)' : ''
-      }`;
+      }${payload.dtmf ? ` · DTMF ${payload.dtmf}` : ''}${
+        payload.language ? ` · ${payload.language}` : ''
+      }${payload.language_defaulted ? ' (defaulted)' : ''}`;
     case 'dispatch':
       return `${titleCase(String(payload.stage ?? ''))}${payload.courier ? ` · ${payload.courier}` : ''}`;
     case 'voc_sealed':
@@ -171,7 +174,6 @@ export default async function RecipientPage({
               <CardContent className="space-y-2 text-sm">
                 <Badge color="green">{voc.sealed_voc_id}</Badge>
                 <Field label="Language" value={langName(langMap, voc.language)} />
-                <Field label="Duration" value={`${voc.duration_seconds ?? 0}s`} />
               </CardContent>
             </Card>
           )}
@@ -194,21 +196,11 @@ export default async function RecipientPage({
                       </div>
                       <div className="text-xs text-[var(--muted)]">
                         {c.outcome ? OUTCOME_LABELS[c.outcome] ?? c.outcome : 'Pending'}
-                        {c.dtmf_response ? ` · pressed ${c.dtmf_response}` : ''}
+                        {c.dtmf_response ? ` · DTMF ${c.dtmf_response}` : ''}
                         {' · '}
                         {formatDateTime(c.created_at)}
                       </div>
                     </div>
-                    {c.recording_url && (
-                      <a
-                        href={c.recording_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 text-xs font-medium text-[var(--primary)] hover:underline"
-                      >
-                        Recording
-                      </a>
-                    )}
                   </div>
                 ))}
               </CardContent>
